@@ -1,5 +1,5 @@
 [project]
-name = "commit-guard"
+name = "git-commit-guard"
 dynamic = ["version"]
 description = "Opinionated conventional commit message linter with imperative mood detection"
 readme = "README.md"
@@ -20,7 +20,7 @@ dependencies = [
 ]
 
 [project.scripts]
-commit-guard = "commit_guard:main"
+commit-guard = "git_commit_guard:main"
 
 [project.urls]
 Homepage = "https://github.com/benner/commit-guard"
