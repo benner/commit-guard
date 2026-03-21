@@ -1,0 +1,19 @@
+[project]
+name = "commit-guard"
+dynamic = ["version"]
+description = "Opinionated conventional commit message linter with imperative mood detection"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "nltk>=3.9.3",
+]
+
+[project.scripts]
+commit-guard = "commit_guard:main"
+
+[build-system]
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+source = "vcs"

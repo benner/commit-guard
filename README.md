@@ -8,26 +8,31 @@ imperative verb.
 
 ## Installation
 
-Standalone via [uv](https://docs.astral.sh/uv/) — no install needed:
+```bash
+uv tool install -e .
+commit-guard
+```
+
+During development:
 
 ```bash
-./commit-guard.py
+uv run commit-guard
 ```
 
 ## Usage
 
 ```bash
 # check HEAD
-commit-guard.py
+commit-guard
 
 # check specific commit
-commit-guard.py abc1234
+commit-guard abc1234
 
 # check commit message file (for git hooks)
-commit-guard.py --message-file .git/COMMIT_EDITMSG
+commit-guard --message-file .git/COMMIT_EDITMSG
 
 # pipe message via stdin
-echo "fix(auth): add token refresh" | commit-guard.py
+echo "fix(auth): add token refresh" | commit-guard
 ```
 
 ### Selecting checks
@@ -37,10 +42,10 @@ comma-separated values:
 
 ```bash
 # only check subject format and imperative mood
-commit-guard.py --enable subject,imperative
+commit-guard --enable subject,imperative
 
 # skip body and signature checks
-commit-guard.py --disable body,signed-off,signature
+commit-guard --disable body,signed-off,signature
 ```
 
 Available checks:
@@ -57,12 +62,12 @@ Available checks:
 ```bash
 # all non-merge commits between tags
 git rev-list --no-merges v1.0..v2.0 | while read -r rev; do
-    commit-guard.py "$rev" || git log -1 --oneline "$rev"
+    commit-guard "$rev" || git log -1 --oneline "$rev"
 done
 
 # only subject checks on a PR range
 git rev-list --no-merges origin/main..HEAD | while read -r rev; do
-    commit-guard.py "$rev" --enable subject,imperative
+    commit-guard "$rev" --enable subject,imperative
 done
 ```
 
