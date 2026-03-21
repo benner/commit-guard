@@ -71,6 +71,32 @@ git rev-list --no-merges origin/main..HEAD | while read -r rev; do
 done
 ```
 
+### pre-commit
+
+Add to your `.pre-commit-config.yaml`:
+
+```yaml
+---
+repos:
+  - repo: https://github.com/benner/commit-guard
+    rev: v0.1.0
+    hooks:
+      - id: commit-guard
+```
+
+Install the hook:
+
+```bash
+pre-commit install --hook-type commit-msg
+```
+
+To selectively enable or disable checks, pass `args`:
+
+```yaml
+      - id: commit-guard
+        args: ["--enable", "subject,imperative"]
+```
+
 ## Imperative mood detection
 
 commit-guard combines two strategies to detect non-imperative descriptions:
