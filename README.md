@@ -6,6 +6,15 @@ Unlike regular expression only tools, commit-guard uses
 NLP (nltk POS tagging) to verify that commit descriptions start with an
 imperative verb.
 
+## Example
+
+```bash
+$ commit-guard
+✗ subject does not match 'type(scope): description': Merge pull request #5 from fix/branch
+✗ missing 'Signed-off-by' trailer
+✗ commit is not signed (GPG/SSH)
+```
+
 ## Installation
 
 ```bash
