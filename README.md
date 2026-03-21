@@ -8,6 +8,20 @@ imperative verb.
 
 ## Installation
 
+From PyPI:
+
+```bash
+uv tool install git-commit-guard
+```
+
+or:
+
+```bash
+pipx install git-commit-guard
+```
+
+From a local clone:
+
 ```bash
 uv tool install -e .
 commit-guard
