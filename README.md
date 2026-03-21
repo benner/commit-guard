@@ -24,7 +24,6 @@ From a local clone:
 
 ```bash
 uv tool install -e .
-commit-guard
 ```
 
 During development:
