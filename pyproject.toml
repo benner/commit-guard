@@ -4,12 +4,28 @@ dynamic = ["version"]
 description = "Opinionated conventional commit message linter with imperative mood detection"
 readme = "README.md"
 requires-python = ">=3.12"
+license = "GPL-2.0-only"
+authors = [{ name = "Nerijus Bendžiūnas", email = "nerijus.bendziunas@gmail.com" }]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "License :: OSI Approved :: GNU General Public License v2 (GPLv2)",
+    "Environment :: Console",
+    "Topic :: Software Development :: Quality Assurance",
+    "Topic :: Software Development :: Version Control :: Git",
+]
 dependencies = [
     "nltk>=3.9.3",
 ]
 
 [project.scripts]
 commit-guard = "commit_guard:main"
+
+[project.urls]
+Homepage = "https://github.com/benner/commit-guard"
+Repository = "https://github.com/benner/commit-guard"
+Issues = "https://github.com/benner/commit-guard/issues"
 
 [build-system]
 requires = ["hatchling", "hatch-vcs"]
