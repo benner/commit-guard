@@ -24,7 +24,7 @@ wheels = [
 ]
 
 [[package]]
-name = "commit-guard"
+name = "git-commit-guard"
 source = { editable = "." }
 dependencies = [
     { name = "nltk" },
