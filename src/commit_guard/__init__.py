@@ -347,7 +347,7 @@ def _report(result):
     return 0 if result.ok else 1
 
 
-def commit_guard_main():
+def main():
     args = _parse_args()
     lines = args.message.split("\n")
 
