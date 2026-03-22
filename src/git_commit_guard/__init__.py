@@ -7,6 +7,7 @@ from enum import StrEnum
 from pathlib import Path
 
 import nltk
+from nltk.corpus import wordnet
 
 TYPES = frozenset(
     {
@@ -192,6 +193,7 @@ class Result:
 def _ensure_nltk_data():
     _download_if_missing("taggers/averaged_perceptron_tagger_eng")
     _download_if_missing("tokenizers/punkt_tab")
+    _download_if_missing("corpora/wordnet")
 
 
 def _download_if_missing(resource):
@@ -233,6 +235,10 @@ def check_imperative(desc, result):
     first = tokens[0]
     if _NON_IMPERATIVE_SUFFIX_RE.search(first):
         result.error(f"expected imperative verb, got '{first}' (non-imperative suffix)")
+        return
+    base = wordnet.morphy(first, wordnet.VERB)
+    if base is not None and base != first:
+        result.error(f"expected imperative verb, got '{first}' (inflected form of '{base}')")
         return
     if first in IMPERATIVE_VERBS:
         return

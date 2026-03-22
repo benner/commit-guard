@@ -210,6 +210,11 @@ class TestCheckImperative:
         check_imperative("adds token refresh", r)
         assert not r.ok
 
+    def test_third_person_es_suffix_fails(self):
+        r = Result()
+        check_imperative("fixes the bug", r)
+        assert not r.ok
+
     def test_non_whitelist_imperative_passes(self):
         r = Result()
         check_imperative("refactor authentication module", r)
