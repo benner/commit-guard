@@ -105,13 +105,18 @@ repos:
     rev: v0.1.0
     hooks:
       - id: commit-guard
+      - id: commit-guard-signature
 ```
 
-Install the hook:
+Install the hooks:
 
 ```bash
-pre-commit install --hook-type commit-msg
+pre-commit install --hook-type commit-msg --hook-type post-commit
 ```
+
+`commit-guard` runs at the `commit-msg` stage and checks message format.
+`commit-guard-signature` runs at the `post-commit` stage and verifies
+the GPG/SSH signature after the commit object is created.
 
 To selectively enable or disable checks, pass `args`:
 
