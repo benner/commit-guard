@@ -195,12 +195,12 @@ class TestCheckImperative:
         check_imperative("add token refresh", r)
         assert r.ok
 
-    def test_past_tense_fails(self):
+    def test_ed_suffix_fails(self):
         r = Result()
         check_imperative("added token refresh", r)
         assert not r.ok
 
-    def test_gerund_fails(self):
+    def test_ing_suffix_fails(self):
         r = Result()
         check_imperative("adding token refresh", r)
         assert not r.ok

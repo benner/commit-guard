@@ -132,6 +132,8 @@ IMPERATIVE_VERBS = frozenset(
     }
 )
 
+_NON_IMPERATIVE_SUFFIX_RE = re.compile(r"(?:ing|ed)$")
+
 SUBJECT_RE = re.compile(
     r"^(?P<type>\w+)(?:\((?P<scope>[^)]+)\))?!?:\s+(?P<desc>.+)$",
 )
@@ -229,6 +231,9 @@ def check_imperative(desc, result):
     if not tokens:
         return
     first = tokens[0]
+    if _NON_IMPERATIVE_SUFFIX_RE.search(first):
+        result.error(f"expected imperative verb, got '{first}' (non-imperative suffix)")
+        return
     if first in IMPERATIVE_VERBS:
         return
     tagged = nltk.pos_tag(["i", *tokens])
