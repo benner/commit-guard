@@ -275,10 +275,7 @@ def main():
         check_body(lines, result)
     if Check.SIGNED_OFF in args.enabled:
         check_signed_off(args.message, result)
-    if Check.SIGNATURE in args.enabled:
-        if args.rev:
-            check_signature(args.rev, result)
-        else:
-            result.warn("signature check skipped (no commit ref)")
+    if Check.SIGNATURE in args.enabled and args.rev:
+        check_signature(args.rev, result)
 
     return _report(result)
