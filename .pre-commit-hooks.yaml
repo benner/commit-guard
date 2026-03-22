@@ -10,3 +10,14 @@
   always_run: true
   pass_filenames: true
   minimum_pre_commit_version: 2.8.0
+
+- id: commit-guard-signature
+  name: commit-guard (signature)
+  description: Verify commit is GPG/SSH signed
+  entry: commit-guard
+  args: [HEAD, --enable, signature]
+  language: python
+  stages: [post-commit]
+  always_run: true
+  pass_filenames: false
+  minimum_pre_commit_version: 2.8.0

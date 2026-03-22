@@ -433,7 +433,7 @@ class TestMain:
         ):
             ret = main()
         assert ret == 0
-        assert "skipped" in capsys.readouterr().err
+        assert "all checks passed" in capsys.readouterr().err
 
     def test_imperative_only_no_subject_check(self, tmp_path):
         # imperative enabled, subject not — desc starts as None, parsed from line
