@@ -1,0 +1,26 @@
+---
+name: Lint Markdown
+on:  # yamllint disable-line rule:truthy
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  lint-md:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Checkout code
+        # yamllint disable-line rule:line-length
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          persist-credentials: false
+      - name: Lint Markdown files with reviewdog
+        # yamllint disable-line rule:line-length
+        uses: reviewdog/action-markdownlint@3667398db9118d7e78f7a63d10e26ce454ba5f58  # v0.26.2
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          reporter: github-pr-review
+          level: info
+          fail_on_error: true
