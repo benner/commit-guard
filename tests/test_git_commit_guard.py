@@ -190,7 +190,7 @@ class TestCheckSignedOff:
 
 
 class TestCheckImperative:
-    def test_whitelist_verb_passes(self):
+    def test_imperative_verb_passes(self):
         r = Result()
         check_imperative("add token refresh", r)
         assert r.ok
@@ -229,6 +229,21 @@ class TestCheckImperative:
         # 'disable' is tagged non-VB by the tagger but wordnet confirms it as a verb
         r = Result()
         check_imperative("disable feature flag", r)
+        assert r.ok
+
+    def test_refactor_passes(self):
+        r = Result()
+        check_imperative("refactor authentication module", r)
+        assert r.ok
+
+    def test_vendor_passes(self):
+        r = Result()
+        check_imperative("vendor third-party libs", r)
+        assert r.ok
+
+    def test_configure_passes(self):
+        r = Result()
+        check_imperative("configure logging pipeline", r)
         assert r.ok
 
     def test_empty_desc_passes(self):
