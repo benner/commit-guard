@@ -215,6 +215,11 @@ class TestCheckImperative:
         check_imperative("refactor authentication module", r)
         assert r.ok
 
+    def test_write_imperative_passes(self):
+        r = Result()
+        check_imperative("write unit tests", r)
+        assert r.ok
+
     def test_empty_desc_passes(self):
         r = Result()
         check_imperative("", r)
