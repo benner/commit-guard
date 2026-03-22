@@ -124,10 +124,9 @@ To selectively enable or disable checks, pass `args`:
 
 commit-guard combines two strategies to detect non-imperative descriptions:
 
-1. A whitelist common commit verbs (`add`, `fix`, `remove`, etc.)
-   that pass immediately without NLP.
-2. nltk POS tagging as a fallback — flags words tagged as past tense (`VBD`),
+1. nltk POS tagging — flags words tagged as past tense (`VBD`),
    gerund (`VBG`), third person (`VBZ`), etc.
+2. WordNet morphology as a fallback for words the tagger misclassifies.
 
 This catches common mistakes like `added logging` or `fixes bug` while
 keeping false positives low.
