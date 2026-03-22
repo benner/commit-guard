@@ -7,6 +7,7 @@ from enum import StrEnum
 from pathlib import Path
 
 import nltk
+from nltk.corpus import wordnet
 
 TYPES = frozenset(
     {
@@ -24,113 +25,7 @@ TYPES = frozenset(
     }
 )
 
-IMPERATIVE_VERBS = frozenset(
-    {
-        "add",
-        "allow",
-        "apply",
-        "avoid",
-        "bump",
-        "catch",
-        "change",
-        "check",
-        "clean",
-        "clear",
-        "configure",
-        "correct",
-        "create",
-        "define",
-        "delete",
-        "deprecate",
-        "disable",
-        "document",
-        "drop",
-        "enable",
-        "enforce",
-        "ensure",
-        "exclude",
-        "export",
-        "extend",
-        "extract",
-        "fix",
-        "format",
-        "guard",
-        "handle",
-        "ignore",
-        "implement",
-        "import",
-        "improve",
-        "include",
-        "increase",
-        "initialize",
-        "inline",
-        "install",
-        "introduce",
-        "invalidate",
-        "limit",
-        "log",
-        "lint",
-        "make",
-        "mark",
-        "merge",
-        "migrate",
-        "move",
-        "normalize",
-        "open",
-        "optimize",
-        "override",
-        "parse",
-        "pass",
-        "patch",
-        "pin",
-        "port",
-        "prevent",
-        "print",
-        "provide",
-        "publish",
-        "reduce",
-        "refactor",
-        "release",
-        "remove",
-        "rename",
-        "reorganize",
-        "replace",
-        "report",
-        "require",
-        "reset",
-        "resolve",
-        "restore",
-        "restrict",
-        "return",
-        "revert",
-        "run",
-        "separate",
-        "set",
-        "show",
-        "simplify",
-        "skip",
-        "sort",
-        "split",
-        "start",
-        "stop",
-        "store",
-        "support",
-        "suppress",
-        "switch",
-        "sync",
-        "track",
-        "trim",
-        "unify",
-        "update",
-        "upgrade",
-        "use",
-        "validate",
-        "vendor",
-        "verify",
-        "wait",
-        "wrap",
-    }
-)
+_NON_IMPERATIVE_SUFFIX_RE = re.compile(r"(?:ing|ed)$")
 
 SUBJECT_RE = re.compile(
     r"^(?P<type>\w+)(?:\((?P<scope>[^)]+)\))?!?:\s+(?P<desc>.+)$",
@@ -190,6 +85,7 @@ class Result:
 def _ensure_nltk_data():
     _download_if_missing("taggers/averaged_perceptron_tagger_eng")
     _download_if_missing("tokenizers/punkt_tab")
+    _download_if_missing("corpora/wordnet")
 
 
 def _download_if_missing(resource):
@@ -229,10 +125,19 @@ def check_imperative(desc, result):
     if not tokens:
         return
     first = tokens[0]
-    if first in IMPERATIVE_VERBS:
+    if _NON_IMPERATIVE_SUFFIX_RE.search(first):
+        result.error(f"expected imperative verb, got '{first}' (non-imperative suffix)")
         return
-    tagged = nltk.pos_tag(["i", *tokens])
-    if tagged[1][1] not in {"VB", "VBP"}:
+    base = wordnet.morphy(first, wordnet.VERB)
+    if base is not None and base != first:
+        result.error(
+            f"expected imperative verb, got '{first}' (inflected form of '{base}')"
+        )
+        return
+    tagged = nltk.pos_tag(["to", *tokens])
+    if tagged[1][1] != "VB":
+        if wordnet.morphy(first, wordnet.VERB) == first:
+            return
         result.error(
             f"expected imperative verb, got '{tagged[1][0]}' (POS={tagged[1][1]})",
         )
