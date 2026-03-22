@@ -69,6 +69,7 @@ IMPERATIVE_VERBS = frozenset(
         "invalidate",
         "limit",
         "log",
+        "lint",
         "make",
         "mark",
         "merge",
