@@ -231,10 +231,10 @@ def check_imperative(desc, result):
     first = tokens[0]
     if first in IMPERATIVE_VERBS:
         return
-    tagged = nltk.pos_tag(tokens)
-    if tagged[0][1] != "VB":
+    tagged = nltk.pos_tag(["i", *tokens])
+    if tagged[1][1] not in {"VB", "VBP"}:
         result.error(
-            f"expected imperative verb, got '{tagged[0][0]}' (POS={tagged[0][1]})",
+            f"expected imperative verb, got '{tagged[1][0]}' (POS={tagged[1][1]})",
         )
 
 
