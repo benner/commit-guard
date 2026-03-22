@@ -238,12 +238,16 @@ def check_imperative(desc, result):
         return
     base = wordnet.morphy(first, wordnet.VERB)
     if base is not None and base != first:
-        result.error(f"expected imperative verb, got '{first}' (inflected form of '{base}')")
+        result.error(
+            f"expected imperative verb, got '{first}' (inflected form of '{base}')"
+        )
         return
     if first in IMPERATIVE_VERBS:
         return
     tagged = nltk.pos_tag(["to", *tokens])
     if tagged[1][1] != "VB":
+        if wordnet.morphy(first, wordnet.VERB) == first:
+            return
         result.error(
             f"expected imperative verb, got '{tagged[1][0]}' (POS={tagged[1][1]})",
         )

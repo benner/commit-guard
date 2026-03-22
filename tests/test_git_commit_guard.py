@@ -225,6 +225,12 @@ class TestCheckImperative:
         check_imperative("write unit tests", r)
         assert r.ok
 
+    def test_tagger_misclassified_verb_passes(self):
+        # 'disable' is tagged non-VB by the tagger but wordnet confirms it as a verb
+        r = Result()
+        check_imperative("disable feature flag", r)
+        assert r.ok
+
     def test_empty_desc_passes(self):
         r = Result()
         check_imperative("", r)
