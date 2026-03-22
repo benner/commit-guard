@@ -10,7 +10,8 @@ imperative verb.
 
 ```bash
 $ commit-guard
-✗ subject does not match 'type(scope): description': Merge pull request #5 from fix/branch
+✗ subject does not match 'type(scope): description':
+  Merge pull request #5 from fix/branch
 ✗ missing 'Signed-off-by' trailer
 ✗ commit is not signed (GPG/SSH)
 ```
@@ -104,13 +105,18 @@ repos:
     rev: v0.1.0
     hooks:
       - id: commit-guard
+      - id: commit-guard-signature
 ```
 
-Install the hook:
+Install the hooks:
 
 ```bash
-pre-commit install --hook-type commit-msg
+pre-commit install --hook-type commit-msg --hook-type post-commit
 ```
+
+`commit-guard` runs at the `commit-msg` stage and checks message format.
+`commit-guard-signature` runs at the `post-commit` stage and verifies
+the GPG/SSH signature after the commit object is created.
 
 To selectively enable or disable checks, pass `args`:
 
@@ -123,10 +129,9 @@ To selectively enable or disable checks, pass `args`:
 
 commit-guard combines two strategies to detect non-imperative descriptions:
 
-1. A whitelist common commit verbs (`add`, `fix`, `remove`, etc.)
-   that pass immediately without NLP.
-2. nltk POS tagging as a fallback — flags words tagged as past tense (`VBD`),
+1. nltk POS tagging — flags words tagged as past tense (`VBD`),
    gerund (`VBG`), third person (`VBZ`), etc.
+2. WordNet morphology as a fallback for words the tagger misclassifies.
 
 This catches common mistakes like `added logging` or `fixes bug` while
 keeping false positives low.
