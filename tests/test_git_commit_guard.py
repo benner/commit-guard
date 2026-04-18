@@ -117,6 +117,36 @@ class TestCheckSubject:
         check_subject("fix: " + "a" * 67, r)  # exactly 72 chars
         assert r.ok
 
+    def test_scope_in_allowlist_passes(self):
+        r = Result()
+        check_subject("fix(auth): add token", r, allowed_scopes=frozenset(["auth"]))
+        assert r.ok
+
+    def test_scope_not_in_allowlist_fails(self):
+        r = Result()
+        check_subject("fix(api): add token", r, allowed_scopes=frozenset(["auth"]))
+        assert not r.ok
+
+    def test_no_scope_with_allowlist_passes(self):
+        r = Result()
+        check_subject("fix: add token", r, allowed_scopes=frozenset(["auth"]))
+        assert r.ok
+
+    def test_require_scope_without_scope_fails(self):
+        r = Result()
+        check_subject("fix: add token", r, require_scope=True)
+        assert not r.ok
+
+    def test_require_scope_with_scope_passes(self):
+        r = Result()
+        check_subject("fix(auth): add token", r, require_scope=True)
+        assert r.ok
+
+    def test_empty_allowlist_accepts_any_scope(self):
+        r = Result()
+        check_subject("fix(anything): add token", r, allowed_scopes=frozenset())
+        assert r.ok
+
     @pytest.mark.parametrize(
         "type_",
         [
@@ -521,6 +551,73 @@ class TestMain:
             ),
         ):
             assert main() == 0
+
+    def test_scopes_flag_valid(self, tmp_path):
+        f = tmp_path / "msg"
+        f.write_text("fix(auth): add token\n\nbody\n\nSigned-off-by: A User <a@b.com>")
+        argv = [
+            "cg",
+            "--message-file",
+            str(f),
+            "--disable",
+            "signature",
+            "--scopes",
+            "auth,api",
+        ]
+        with patch("sys.argv", argv):
+            assert main() == 0
+
+    def test_scopes_flag_invalid(self, tmp_path):
+        f = tmp_path / "msg"
+        f.write_text("fix(db): add thing\n\nbody\n\nSigned-off-by: A User <a@b.com>")
+        argv = [
+            "cg",
+            "--message-file",
+            str(f),
+            "--disable",
+            "signature",
+            "--scopes",
+            "auth,api",
+        ]
+        with patch("sys.argv", argv):
+            assert main() == 1
+
+    def test_require_scope_flag(self, tmp_path):
+        f = tmp_path / "msg"
+        f.write_text(_VALID_MSG)
+        argv = [
+            "cg",
+            "--message-file",
+            str(f),
+            "--disable",
+            "signature",
+            "--require-scope",
+        ]
+        with patch("sys.argv", argv):
+            assert main() == 1
+
+    def test_scopes_from_config(self, tmp_path):
+        f = tmp_path / "msg"
+        f.write_text("fix(db): add thing\n\nbody\n\nSigned-off-by: A User <a@b.com>")
+        argv = ["cg", "--message-file", str(f), "--disable", "signature"]
+        with (
+            patch("sys.argv", argv),
+            patch("git_commit_guard._load_config", return_value={"scopes": ["auth"]}),
+        ):
+            assert main() == 1
+
+    def test_require_scope_from_config(self, tmp_path):
+        f = tmp_path / "msg"
+        f.write_text(_VALID_MSG)
+        argv = ["cg", "--message-file", str(f), "--disable", "signature"]
+        with (
+            patch("sys.argv", argv),
+            patch(
+                "git_commit_guard._load_config",
+                return_value={"require-scope": True},
+            ),
+        ):
+            assert main() == 1
 
     def test_cli_overrides_config(self, tmp_path):
         f = tmp_path / "msg"
