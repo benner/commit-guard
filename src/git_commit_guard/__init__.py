@@ -7,6 +7,7 @@ from enum import StrEnum
 from pathlib import Path
 
 import nltk
+import tomllib
 from nltk.corpus import wordnet
 
 TYPES = frozenset(
@@ -49,6 +50,23 @@ class Check(StrEnum):
 
 
 ALL_CHECKS = frozenset(Check.__members__.values())
+
+
+def _load_config(start=None):
+    start = start or Path.cwd()
+    for directory in [start, *start.parents]:
+        config_path = directory / ".commit-guard.toml"
+        if config_path.exists():
+            with config_path.open("rb") as f:
+                return tomllib.load(f)
+    return {}
+
+
+def _parse_config_checks(config, key):
+    try:
+        return [Check(v) for v in config.get(key, [])]
+    except ValueError as e:
+        sys.exit(f".commit-guard.toml: {e}")
 
 
 class Level(StrEnum):
@@ -220,12 +238,20 @@ def _parse_args():
         help=f"skip these checks ({checks_list})",
     )
     args = parser.parse_args()
+    config = _load_config()
 
-    enabled = (
-        frozenset(_parse_checks(parser, args.enable)) if args.enable else ALL_CHECKS
-    )
-    if args.disable:
-        enabled = enabled - frozenset(_parse_checks(parser, args.disable))
+    if args.enable or args.disable:
+        enabled = (
+            frozenset(_parse_checks(parser, args.enable)) if args.enable else ALL_CHECKS
+        )
+        if args.disable:
+            enabled = enabled - frozenset(_parse_checks(parser, args.disable))
+    elif config.get("enable"):
+        enabled = frozenset(_parse_config_checks(config, "enable"))
+    elif config.get("disable"):
+        enabled = ALL_CHECKS - frozenset(_parse_config_checks(config, "disable"))
+    else:
+        enabled = ALL_CHECKS
 
     if args.message_file:
         rev = None

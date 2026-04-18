@@ -80,6 +80,25 @@ Available checks:
 * `signed-off` - `Signed-off-by:` trailer exists
 * `signature` - Verify GPG or SSH signature
 
+### Configuration file
+
+Place `.commit-guard.toml` in your project root (or any parent directory) to
+set defaults for `enable` and `disable`. commit-guard searches upward from the
+working directory and uses the first file found.
+
+```toml
+# .commit-guard.toml
+disable = ["signature", "body"]
+```
+
+```toml
+# .commit-guard.toml
+enable = ["subject", "imperative"]
+```
+
+CLI flags (`--enable`, `--disable`) take full precedence and ignore the config
+file entirely when provided.
+
 ### Checking a range of commits
 
 ```bash
