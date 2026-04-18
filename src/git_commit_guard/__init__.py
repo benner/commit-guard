@@ -119,7 +119,7 @@ def _strip_comments(message):
     )
 
 
-def check_subject(line, result):
+def check_subject(line, result, allowed_scopes=frozenset(), *, require_scope=False):
     m = SUBJECT_RE.match(line)
     if not m:
         result.error(f"subject does not match 'type(scope): description': {line}")
@@ -127,6 +127,12 @@ def check_subject(line, result):
 
     if m.group("type") not in TYPES:
         result.error(f"unknown type: {m.group('type')}")
+
+    scope = m.group("scope")
+    if require_scope and scope is None:
+        result.error("scope is required")
+    if allowed_scopes and scope is not None and scope not in allowed_scopes:
+        result.error(f"unknown scope: {scope}")
 
     desc = m.group("desc")
     if desc[0].isupper():
@@ -213,6 +219,42 @@ class Args:
     rev: str | None
     message: str
     enabled: frozenset
+    allowed_scopes: frozenset
+    require_scope: bool
+
+
+def _resolve_enabled(args, config, parser):
+    if args.enable or args.disable:
+        enabled = (
+            frozenset(_parse_checks(parser, args.enable)) if args.enable else ALL_CHECKS
+        )
+        if args.disable:
+            enabled = enabled - frozenset(_parse_checks(parser, args.disable))
+    elif config.get("enable"):
+        enabled = frozenset(_parse_config_checks(config, "enable"))
+    elif config.get("disable"):
+        enabled = ALL_CHECKS - frozenset(_parse_config_checks(config, "disable"))
+    else:
+        enabled = ALL_CHECKS
+    return enabled
+
+
+def _resolve_scopes(args, config):
+    if args.scopes:
+        allowed_scopes = frozenset(s.strip() for s in args.scopes.split(","))
+    elif config.get("scopes"):
+        allowed_scopes = frozenset(config["scopes"])
+    else:
+        allowed_scopes = frozenset()
+
+    if args.require_scope:
+        require_scope = True
+    elif "require-scope" in config:
+        require_scope = config["require-scope"]
+    else:
+        require_scope = False
+
+    return allowed_scopes, require_scope
 
 
 def _parse_checks(parser, value):
@@ -237,21 +279,21 @@ def _parse_args():
         metavar="CHECK[,CHECK,...]",
         help=f"skip these checks ({checks_list})",
     )
+    parser.add_argument(
+        "--scopes",
+        metavar="SCOPE[,SCOPE,...]",
+        help="allowed scope values (any scope accepted if not set)",
+    )
+    parser.add_argument(
+        "--require-scope",
+        action="store_true",
+        default=False,
+        help="require a scope in the subject line",
+    )
     args = parser.parse_args()
     config = _load_config()
-
-    if args.enable or args.disable:
-        enabled = (
-            frozenset(_parse_checks(parser, args.enable)) if args.enable else ALL_CHECKS
-        )
-        if args.disable:
-            enabled = enabled - frozenset(_parse_checks(parser, args.disable))
-    elif config.get("enable"):
-        enabled = frozenset(_parse_config_checks(config, "enable"))
-    elif config.get("disable"):
-        enabled = ALL_CHECKS - frozenset(_parse_config_checks(config, "disable"))
-    else:
-        enabled = ALL_CHECKS
+    enabled = _resolve_enabled(args, config, parser)
+    allowed_scopes, require_scope = _resolve_scopes(args, config)
 
     if args.message_file:
         rev = None
@@ -266,7 +308,13 @@ def _parse_args():
         rev = "HEAD"
         message = _strip_comments(_get_message(rev))
 
-    return Args(rev=rev, message=message, enabled=enabled)
+    return Args(
+        rev=rev,
+        message=message,
+        enabled=enabled,
+        allowed_scopes=allowed_scopes,
+        require_scope=require_scope,
+    )
 
 
 def _report(result):
@@ -290,7 +338,9 @@ def main():
 
     desc = None
     if Check.SUBJECT in args.enabled:
-        desc = check_subject(lines[0], result)
+        desc = check_subject(
+            lines[0], result, args.allowed_scopes, require_scope=args.require_scope
+        )
     if Check.IMPERATIVE in args.enabled:
         if desc is None:
             m = SUBJECT_RE.match(lines[0])

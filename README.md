@@ -80,15 +80,35 @@ Available checks:
 * `signed-off` - `Signed-off-by:` trailer exists
 * `signature` - Verify GPG or SSH signature
 
+### Scope validation
+
+By default any scope is accepted and scope is optional. Use `--scopes` to
+restrict allowed values and `--require-scope` to enforce that a scope is always
+present:
+
+```bash
+# only allow known scopes
+commit-guard --scopes auth,api,db
+
+# require a scope
+commit-guard --require-scope
+
+# combine both
+commit-guard --scopes auth,api --require-scope
+```
+
 ### Configuration file
 
 Place `.commit-guard.toml` in your project root (or any parent directory) to
-set defaults for `enable` and `disable`. commit-guard searches upward from the
-working directory and uses the first file found.
+set defaults for `enable`, `disable`, `scopes`, and `require-scope`.
+commit-guard searches upward from the working directory and uses the first file
+found.
 
 ```toml
 # .commit-guard.toml
 disable = ["signature", "body"]
+scopes = ["auth", "api", "db"]
+require-scope = true
 ```
 
 ```toml
@@ -96,8 +116,8 @@ disable = ["signature", "body"]
 enable = ["subject", "imperative"]
 ```
 
-CLI flags (`--enable`, `--disable`) take full precedence and ignore the config
-file entirely when provided.
+CLI flags (`--enable`, `--disable`, `--scopes`, `--require-scope`) take full
+precedence and ignore config file values when provided.
 
 ### Checking a range of commits
 
