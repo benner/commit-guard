@@ -8,7 +8,9 @@ from git_commit_guard import (
     _download_if_missing,
     _ensure_nltk_data,
     _get_message,
+    _load_config,
     _parse_checks,
+    _parse_config_checks,
     _report,
     _strip_comments,
     check_body,
@@ -331,6 +333,41 @@ class TestGetMessage:
             _get_message("abc")
 
 
+class TestLoadConfig:
+    def test_returns_empty_when_no_file(self, tmp_path):
+        assert _load_config(tmp_path) == {}
+
+    def test_loads_file_in_start_dir(self, tmp_path):
+        (tmp_path / ".commit-guard.toml").write_text('disable = ["signature"]\n')
+        assert _load_config(tmp_path) == {"disable": ["signature"]}
+
+    def test_loads_file_from_parent(self, tmp_path):
+        (tmp_path / ".commit-guard.toml").write_text('disable = ["body"]\n')
+        subdir = tmp_path / "sub"
+        subdir.mkdir()
+        assert _load_config(subdir) == {"disable": ["body"]}
+
+    def test_first_found_wins(self, tmp_path):
+        (tmp_path / ".commit-guard.toml").write_text('disable = ["body"]\n')
+        subdir = tmp_path / "sub"
+        subdir.mkdir()
+        (subdir / ".commit-guard.toml").write_text('disable = ["signature"]\n')
+        assert _load_config(subdir) == {"disable": ["signature"]}
+
+
+class TestParseConfigChecks:
+    def test_disable_list(self):
+        checks = _parse_config_checks({"disable": ["signature", "body"]}, "disable")
+        assert len(checks) == 2  # noqa: PLR2004
+
+    def test_missing_key_returns_empty(self):
+        assert _parse_config_checks({}, "disable") == []
+
+    def test_invalid_check_name_exits(self):
+        with pytest.raises(SystemExit, match=r"\.commit-guard\.toml"):
+            _parse_config_checks({"disable": ["bogus"]}, "disable")
+
+
 class TestParseChecks:
     def test_invalid_check_name(self):
         parser = ArgumentParser()
@@ -462,3 +499,37 @@ class TestMain:
             pytest.raises(SystemExit),
         ):
             main()
+
+    def test_config_disable_applied(self, tmp_path):
+        f = tmp_path / "msg"
+        f.write_text(_VALID_MSG)
+        disabled = {"disable": ["signature", "body", "signed-off", "imperative"]}
+        with (
+            patch("sys.argv", ["cg", "--message-file", str(f)]),
+            patch("git_commit_guard._load_config", return_value=disabled),
+        ):
+            assert main() == 0
+
+    def test_config_enable_applied(self, tmp_path):
+        f = tmp_path / "msg"
+        f.write_text(_VALID_MSG)
+        with (
+            patch("sys.argv", ["cg", "--message-file", str(f)]),
+            patch(
+                "git_commit_guard._load_config",
+                return_value={"enable": ["subject"]},
+            ),
+        ):
+            assert main() == 0
+
+    def test_cli_overrides_config(self, tmp_path):
+        f = tmp_path / "msg"
+        f.write_text(_VALID_MSG)
+        with (
+            patch("sys.argv", ["cg", "--message-file", str(f), "--enable", "subject"]),
+            patch(
+                "git_commit_guard._load_config",
+                return_value={"disable": ["subject"]},
+            ),
+        ):
+            assert main() == 0
