@@ -200,6 +200,17 @@ class TestCheckBody:
         check_body(["fix: add thing", "", "line one", "line two"], r)
         assert r.ok
 
+    def test_trailer_only_is_not_body(self):
+        r = Result()
+        check_body(["fix: add thing", "", "Signed-off-by: Name <name@example.com>"], r)
+        assert not r.ok
+
+    def test_body_with_trailer_passes(self):
+        r = Result()
+        trailer = "Signed-off-by: Name <name@example.com>"
+        check_body(["fix: add thing", "", "actual body", trailer], r)
+        assert r.ok
+
 
 class TestCheckSignedOff:
     def test_valid(self):

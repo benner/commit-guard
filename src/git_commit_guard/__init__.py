@@ -27,6 +27,7 @@ TYPES = frozenset(
 )
 
 _NON_IMPERATIVE_SUFFIX_RE = re.compile(r"(?:ing|ed)$")
+_TRAILER_RE = re.compile(r"^[\w-]+:\s+\S")
 
 SUBJECT_RE = re.compile(
     r"^(?P<type>\w+)(?:\((?P<scope>[^)]+)\))?!?:\s+(?P<desc>.+)$",
@@ -173,7 +174,8 @@ def check_body(lines, result):
         return
     if lines[1].strip():
         result.error("missing blank line between subject and body")
-    if not any(ln.strip() for ln in lines[2:]):
+    body_lines = [ln for ln in lines[2:] if not _TRAILER_RE.match(ln)]
+    if not any(ln.strip() for ln in body_lines):
         result.error("missing body")
 
 
