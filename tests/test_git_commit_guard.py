@@ -3,6 +3,7 @@ from argparse import ArgumentParser
 from unittest.mock import MagicMock, patch
 
 import pytest
+
 from git_commit_guard import (
     Result,
     _download_if_missing,
@@ -20,8 +21,6 @@ from git_commit_guard import (
     check_subject,
     main,
 )
-
-# ruff: noqa: S101 # Use of `assert` detected
 
 
 @pytest.fixture(scope="session", autouse=True)

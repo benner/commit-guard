@@ -1,13 +1,13 @@
 import re
 import subprocess
 import sys
+import tomllib
 from argparse import ArgumentParser
 from dataclasses import dataclass, field
 from enum import StrEnum
 from pathlib import Path
 
 import nltk
-import tomllib
 from nltk.corpus import wordnet
 
 TYPES = frozenset(
