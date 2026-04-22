@@ -22,8 +22,6 @@ from git_commit_guard import (
     main,
 )
 
-# ruff: noqa: S101 # Use of `assert` detected
-
 
 @pytest.fixture(scope="session", autouse=True)
 def nltk_data():
