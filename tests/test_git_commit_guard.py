@@ -3,6 +3,7 @@ from argparse import ArgumentParser
 from unittest.mock import MagicMock, patch
 
 import pytest
+
 from git_commit_guard import (
     Result,
     _download_if_missing,
