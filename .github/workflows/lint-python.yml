@@ -9,6 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       checks: write
+      pull-requests: write
     steps:
       - name: Checkout code
         # yamllint disable-line rule:line-length
@@ -20,3 +21,4 @@ jobs:
         uses: benner/action-ruff@b36eb590165f0ea36700bb92de15235c121f24f0  # v0.1.0
         with:
           fail_level: error
+          reporter: github-pr-review
