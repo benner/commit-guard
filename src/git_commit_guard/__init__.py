@@ -247,6 +247,7 @@ class Args:
     allowed_types: frozenset
     max_subject_length: int
     rev_range: str | None
+    allow_empty: bool
 
 
 def _resolve_enabled(args, config, parser):
@@ -350,12 +351,21 @@ def _parse_args():
         metavar="REF..REF",
         help="check all commits in the given revision range",
     )
+    parser.add_argument(
+        "--allow-empty",
+        action="store_true",
+        default=False,
+        help="exit 0 when --range yields no commits (default: exit 1)",
+    )
     args = parser.parse_args()
     config = _load_config()
     enabled = _resolve_enabled(args, config, parser)
     allowed_scopes, require_scope = _resolve_scopes(args, config)
     allowed_types = _resolve_types(args, config)
     max_subject_length = _resolve_max_subject_length(args, config)
+
+    if args.allow_empty and not args.rev_range:
+        parser.error("--allow-empty requires --range")
 
     if args.rev_range:
         if args.rev is not None or args.message_file:
@@ -384,6 +394,7 @@ def _parse_args():
         allowed_types=allowed_types,
         max_subject_length=max_subject_length,
         rev_range=args.rev_range,
+        allow_empty=args.allow_empty,
     )
 
 
@@ -433,7 +444,7 @@ def main():
         revs = _get_range_revs(args.rev_range)
         if not revs:
             sys.stderr.write("no commits in range\n")
-            return 0
+            return 0 if args.allow_empty else 1
         failed = False
         for rev in revs:
             message = _strip_comments(_get_message(rev))

@@ -894,13 +894,28 @@ class TestMain:
         ):
             assert main() == 1
 
-    def test_range_empty_returns_zero(self, capsys):
+    def test_range_empty_returns_one(self, capsys):
         with (
             patch("sys.argv", ["cg", "--range", "origin/main..HEAD"]),
             patch("git_commit_guard._get_range_revs", return_value=[]),
         ):
+            assert main() == 1
+        assert "no commits in range" in capsys.readouterr().err
+
+    def test_range_empty_with_allow_empty_returns_zero(self, capsys):
+        with (
+            patch("sys.argv", ["cg", "--range", "origin/main..HEAD", "--allow-empty"]),
+            patch("git_commit_guard._get_range_revs", return_value=[]),
+        ):
             assert main() == 0
         assert "no commits in range" in capsys.readouterr().err
+
+    def test_allow_empty_without_range_exits(self):
+        with (
+            patch("sys.argv", ["cg", "--allow-empty"]),
+            pytest.raises(SystemExit),
+        ):
+            main()
 
     def test_range_conflicts_with_rev(self):
         with (
