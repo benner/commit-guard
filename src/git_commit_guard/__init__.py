@@ -232,6 +232,7 @@ class Args:
     allowed_scopes: frozenset
     require_scope: bool
     allowed_types: frozenset
+    max_subject_length: int
 
 
 def _resolve_enabled(args, config, parser):
@@ -248,6 +249,14 @@ def _resolve_enabled(args, config, parser):
     else:
         enabled = ALL_CHECKS
     return enabled
+
+
+def _resolve_max_subject_length(args, config):
+    if args.max_subject_length is not None:
+        return args.max_subject_length
+    if "max-subject-length" in config:
+        return config["max-subject-length"]
+    return MAX_SUBJECT_LEN
 
 
 def _resolve_types(args, config):
@@ -314,11 +323,19 @@ def _parse_args():
         metavar="TYPE[,TYPE,...]",
         help="allowed commit types (replaces defaults when set)",
     )
+    parser.add_argument(
+        "--max-subject-length",
+        type=int,
+        default=None,
+        metavar="N",
+        help=f"maximum subject line length (default: {MAX_SUBJECT_LEN})",
+    )
     args = parser.parse_args()
     config = _load_config()
     enabled = _resolve_enabled(args, config, parser)
     allowed_scopes, require_scope = _resolve_scopes(args, config)
     allowed_types = _resolve_types(args, config)
+    max_subject_length = _resolve_max_subject_length(args, config)
 
     if args.message_file:
         rev = None
@@ -340,6 +357,7 @@ def _parse_args():
         allowed_scopes=allowed_scopes,
         require_scope=require_scope,
         allowed_types=allowed_types,
+        max_subject_length=max_subject_length,
     )
 
 
@@ -369,6 +387,7 @@ def main():
             result,
             args.allowed_scopes,
             args.allowed_types,
+            args.max_subject_length,
             require_scope=args.require_scope,
         )
     if Check.IMPERATIVE in args.enabled:

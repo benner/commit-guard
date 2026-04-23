@@ -80,6 +80,15 @@ Available checks:
 * `signed-off` - `Signed-off-by:` trailer exists
 * `signature` - Verify GPG or SSH signature
 
+### Subject length
+
+The default maximum subject line length is 72 characters. Override with
+`--max-subject-length`:
+
+```bash
+commit-guard --max-subject-length 100
+```
+
 ### Type validation
 
 By default the standard conventional commit types are accepted. Use `--types`
@@ -113,9 +122,9 @@ commit-guard --scopes auth,api --require-scope
 ### Configuration file
 
 Place `.commit-guard.toml` in your project root (or any parent directory) to
-set defaults for `enable`, `disable`, `scopes`, `require-scope`, and `types`.
-commit-guard searches upward from the working directory and uses the first file
-found.
+set defaults for `enable`, `disable`, `scopes`, `require-scope`, `types`, and
+`max-subject-length`. commit-guard searches upward from the working directory
+and uses the first file found.
 
 ```toml
 # .commit-guard.toml
@@ -123,6 +132,7 @@ disable = ["signature", "body"]
 scopes = ["auth", "api", "db"]
 require-scope = true
 types = ["feat", "fix", "chore", "wip"]
+max-subject-length = 100
 ```
 
 ```toml
@@ -130,8 +140,9 @@ types = ["feat", "fix", "chore", "wip"]
 enable = ["subject", "imperative"]
 ```
 
-CLI flags (`--enable`, `--disable`, `--scopes`, `--require-scope`, `--types`)
-take full precedence and ignore config file values when provided.
+CLI flags (`--enable`, `--disable`, `--scopes`, `--require-scope`, `--types`,
+`--max-subject-length`) take full precedence and ignore config file values when
+provided.
 
 ### Checking a range of commits
 

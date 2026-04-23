@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from git_commit_guard import (
+    MAX_SUBJECT_LEN,
     TYPES,
     Result,
     _download_if_missing,
@@ -14,6 +15,7 @@ from git_commit_guard import (
     _parse_checks,
     _parse_config_checks,
     _report,
+    _resolve_max_subject_length,
     _resolve_types,
     _strip_comments,
     check_body,
@@ -430,6 +432,28 @@ class TestParseConfigChecks:
             _parse_config_checks({"disable": ["bogus"]}, "disable")
 
 
+class TestResolveMaxSubjectLength:
+    def test_defaults_when_no_config_or_flag(self):
+        result = _resolve_max_subject_length(Namespace(max_subject_length=None), {})
+        assert result == MAX_SUBJECT_LEN
+
+    def test_cli_flag_overrides_default(self):
+        result = _resolve_max_subject_length(Namespace(max_subject_length=50), {})
+        assert result == 50  # noqa: PLR2004 Magic value used in comparison, consider replacing 50 with a constant variable
+
+    def test_config_overrides_default(self):
+        result = _resolve_max_subject_length(
+            Namespace(max_subject_length=None), {"max-subject-length": 60}
+        )
+        assert result == 60  # noqa: PLR2004 Magic value used in comparison, consider replacing 60 with a constant variable
+
+    def test_cli_overrides_config(self):
+        result = _resolve_max_subject_length(
+            Namespace(max_subject_length=50), {"max-subject-length": 60}
+        )
+        assert result == 50  # noqa: PLR2004 Magic value used in comparison, consider replacing 50 with a constant variable
+
+
 class TestResolveTypes:
     def test_defaults_when_no_config_or_flag(self):
         assert _resolve_types(Namespace(types=None), {}) == TYPES
@@ -719,6 +743,70 @@ class TestMain:
             patch(
                 "git_commit_guard._load_config",
                 return_value={"types": ["wip", "feat"]},
+            ),
+        ):
+            assert main() == 0
+
+    def test_max_subject_length_flag_passes(self, tmp_path):
+        f = tmp_path / "msg"
+        f.write_text("fix: ok\n\nbody\n\nSigned-off-by: A User <a@b.com>")
+        argv = [
+            "cg",
+            "--message-file",
+            str(f),
+            "--disable",
+            "signature",
+            "--max-subject-length",
+            "10",
+        ]
+        with patch("sys.argv", argv):
+            assert main() == 0
+
+    def test_max_subject_length_flag_fails(self, tmp_path):
+        f = tmp_path / "msg"
+        f.write_text(_VALID_MSG)
+        argv = [
+            "cg",
+            "--message-file",
+            str(f),
+            "--disable",
+            "signature",
+            "--max-subject-length",
+            "5",
+        ]
+        with patch("sys.argv", argv):
+            assert main() == 1
+
+    def test_max_subject_length_from_config(self, tmp_path):
+        f = tmp_path / "msg"
+        f.write_text(_VALID_MSG)
+        argv = ["cg", "--message-file", str(f), "--disable", "signature"]
+        with (
+            patch("sys.argv", argv),
+            patch(
+                "git_commit_guard._load_config",
+                return_value={"max-subject-length": 5},
+            ),
+        ):
+            assert main() == 1
+
+    def test_max_subject_length_cli_overrides_config(self, tmp_path):
+        f = tmp_path / "msg"
+        f.write_text(_VALID_MSG)
+        argv = [
+            "cg",
+            "--message-file",
+            str(f),
+            "--disable",
+            "signature",
+            "--max-subject-length",
+            "100",
+        ]
+        with (
+            patch("sys.argv", argv),
+            patch(
+                "git_commit_guard._load_config",
+                return_value={"max-subject-length": 5},
             ),
         ):
             assert main() == 0
