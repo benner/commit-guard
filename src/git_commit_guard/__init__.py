@@ -224,6 +224,19 @@ def _get_message(rev):
         sys.exit(f"git error: {stderr}")
 
 
+def _get_range_revs(rev_range):
+    try:
+        output = subprocess.check_output(  # noqa: S603
+            ["git", "log", "--format=%H", rev_range],  # noqa: S607
+            text=True,
+            stderr=subprocess.PIPE,
+            timeout=GIT_TIMEOUT,
+        ).strip()
+    except subprocess.CalledProcessError as e:
+        sys.exit(f"git error: {e.stderr.strip()}")
+    return output.split("\n") if output else []
+
+
 @dataclass
 class Args:
     rev: str | None
@@ -233,6 +246,7 @@ class Args:
     require_scope: bool
     allowed_types: frozenset
     max_subject_length: int
+    rev_range: str | None
 
 
 def _resolve_enabled(args, config, parser):
@@ -330,6 +344,12 @@ def _parse_args():
         metavar="N",
         help=f"maximum subject line length (default: {MAX_SUBJECT_LEN})",
     )
+    parser.add_argument(
+        "--range",
+        dest="rev_range",
+        metavar="REF..REF",
+        help="check all commits in the given revision range",
+    )
     args = parser.parse_args()
     config = _load_config()
     enabled = _resolve_enabled(args, config, parser)
@@ -337,7 +357,12 @@ def _parse_args():
     allowed_types = _resolve_types(args, config)
     max_subject_length = _resolve_max_subject_length(args, config)
 
-    if args.message_file:
+    if args.rev_range:
+        if args.rev is not None or args.message_file:
+            parser.error("--range cannot be combined with rev or --message-file")
+        rev = None
+        message = ""
+    elif args.message_file:
         rev = None
         message = _strip_comments(args.message_file.read_text().strip())
     elif args.rev:
@@ -358,6 +383,7 @@ def _parse_args():
         require_scope=require_scope,
         allowed_types=allowed_types,
         max_subject_length=max_subject_length,
+        rev_range=args.rev_range,
     )
 
 
@@ -371,15 +397,8 @@ def _report(result):
     return 0 if result.ok else 1
 
 
-def main():
-    args = _parse_args()
-    lines = args.message.split("\n")
-
-    if Check.IMPERATIVE in args.enabled:
-        _ensure_nltk_data()
-
-    result = Result()
-
+def _run_checks(args, rev, message, result):
+    lines = message.split("\n")
     desc = None
     if Check.SUBJECT in args.enabled:
         desc = check_subject(
@@ -399,8 +418,32 @@ def main():
     if Check.BODY in args.enabled:
         check_body(lines, result)
     if Check.SIGNED_OFF in args.enabled:
-        check_signed_off(args.message, result)
-    if Check.SIGNATURE in args.enabled and args.rev:
-        check_signature(args.rev, result)
+        check_signed_off(message, result)
+    if Check.SIGNATURE in args.enabled and rev:
+        check_signature(rev, result)
 
+
+def main():
+    args = _parse_args()
+
+    if Check.IMPERATIVE in args.enabled:
+        _ensure_nltk_data()
+
+    if args.rev_range:
+        revs = _get_range_revs(args.rev_range)
+        if not revs:
+            sys.stderr.write("no commits in range\n")
+            return 0
+        failed = False
+        for rev in revs:
+            message = _strip_comments(_get_message(rev))
+            sys.stderr.write(f"{rev[:7]} {message.split('\n')[0]}\n")
+            result = Result()
+            _run_checks(args, rev, message, result)
+            if _report(result) != 0:
+                failed = True
+        return 1 if failed else 0
+
+    result = Result()
+    _run_checks(args, args.rev, args.message, result)
     return _report(result)

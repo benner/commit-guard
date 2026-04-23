@@ -146,16 +146,18 @@ provided.
 
 ### Checking a range of commits
 
-```bash
-# all non-merge commits between tags
-git rev-list --no-merges v1.0..v2.0 | while read -r rev; do
-    commit-guard "$rev" || git log -1 --oneline "$rev"
-done
+Use `--range` to check all commits in a revision range. All commits are
+checked and a single non-zero exit code is returned if any fail:
 
-# only subject checks on a PR range
-git rev-list --no-merges origin/main..HEAD | while read -r rev; do
-    commit-guard "$rev" --enable subject,imperative
-done
+```bash
+# check all commits in a PR
+commit-guard --range origin/main..HEAD
+
+# check between two tags
+commit-guard --range v1.0..v2.0
+
+# only subject checks on a range
+commit-guard --range origin/main..HEAD --enable subject,imperative
 ```
 
 ### pre-commit

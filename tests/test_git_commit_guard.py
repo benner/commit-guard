@@ -11,6 +11,7 @@ from git_commit_guard import (
     _download_if_missing,
     _ensure_nltk_data,
     _get_message,
+    _get_range_revs,
     _load_config,
     _parse_checks,
     _parse_config_checks,
@@ -831,3 +832,113 @@ class TestMain:
             ),
         ):
             assert main() == 0
+
+    def test_range_all_pass(self):
+        with (
+            patch(
+                "sys.argv",
+                ["cg", "--range", "origin/main..HEAD", "--disable", "signature"],
+            ),
+            patch(
+                "git_commit_guard._get_range_revs",
+                return_value=["abc1234", "def5678"],
+            ),
+            patch("git_commit_guard._get_message", return_value=_VALID_MSG),
+        ):
+            assert main() == 0
+
+    def test_range_one_fails(self):
+        messages = {"abc1234": _VALID_MSG, "def5678": "not a valid commit message"}
+        with (
+            patch(
+                "sys.argv",
+                [
+                    "cg",
+                    "--range",
+                    "origin/main..HEAD",
+                    "--disable",
+                    "signature,body,signed-off,imperative",
+                ],
+            ),
+            patch(
+                "git_commit_guard._get_range_revs",
+                return_value=["abc1234", "def5678"],
+            ),
+            patch(
+                "git_commit_guard._get_message",
+                side_effect=lambda rev: messages[rev],
+            ),
+        ):
+            assert main() == 1
+
+    def test_range_all_fail_returns_one(self):
+        with (
+            patch(
+                "sys.argv",
+                [
+                    "cg",
+                    "--range",
+                    "origin/main..HEAD",
+                    "--disable",
+                    "signature,body,signed-off,imperative",
+                ],
+            ),
+            patch(
+                "git_commit_guard._get_range_revs",
+                return_value=["abc1234"],
+            ),
+            patch(
+                "git_commit_guard._get_message",
+                return_value="not a valid commit message",
+            ),
+        ):
+            assert main() == 1
+
+    def test_range_empty_returns_zero(self, capsys):
+        with (
+            patch("sys.argv", ["cg", "--range", "origin/main..HEAD"]),
+            patch("git_commit_guard._get_range_revs", return_value=[]),
+        ):
+            assert main() == 0
+        assert "no commits in range" in capsys.readouterr().err
+
+    def test_range_conflicts_with_rev(self):
+        with (
+            patch("sys.argv", ["cg", "abc123", "--range", "origin/main..HEAD"]),
+            pytest.raises(SystemExit),
+        ):
+            main()
+
+    def test_range_conflicts_with_message_file(self, tmp_path):
+        f = tmp_path / "msg"
+        f.write_text(_VALID_MSG)
+        with (
+            patch(
+                "sys.argv",
+                ["cg", "--message-file", str(f), "--range", "origin/main..HEAD"],
+            ),
+            pytest.raises(SystemExit),
+        ):
+            main()
+
+
+class TestGetRangeRevs:
+    def test_returns_shas(self):
+        with patch(
+            "git_commit_guard.subprocess.check_output",
+            return_value="abc1234\ndef5678",
+        ):
+            assert _get_range_revs("origin/main..HEAD") == ["abc1234", "def5678"]
+
+    def test_empty_range_returns_empty_list(self):
+        with patch("git_commit_guard.subprocess.check_output", return_value=""):
+            assert _get_range_revs("origin/main..HEAD") == []
+
+    def test_invalid_range_exits(self):
+        err = subprocess.CalledProcessError(128, "git")
+        err.stderr = "fatal: bad revision 'bogus'"
+        with (
+            patch("git_commit_guard.subprocess.check_output", side_effect=err),
+            pytest.raises(SystemExit, match="git error"),
+        ):
+            _get_range_revs("bogus")
