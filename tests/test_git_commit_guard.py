@@ -146,6 +146,16 @@ class TestCheckSubject:
         check_subject("fix(anything): add token", r, allowed_scopes=frozenset())
         assert r.ok
 
+    def test_custom_type_passes(self):
+        r = Result()
+        check_subject("wip: add thing", r, allowed_types=frozenset(["wip"]))
+        assert r.ok
+
+    def test_type_not_in_custom_list_fails(self):
+        r = Result()
+        check_subject("feat: add thing", r, allowed_types=frozenset(["wip"]))
+        assert not r.ok
+
     @pytest.mark.parametrize(
         "type_",
         [

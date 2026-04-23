@@ -120,13 +120,20 @@ def _strip_comments(message):
     )
 
 
-def check_subject(line, result, allowed_scopes=frozenset(), *, require_scope=False):
+def check_subject(
+    line,
+    result,
+    allowed_scopes=frozenset(),
+    allowed_types=TYPES,
+    *,
+    require_scope=False,
+):
     m = SUBJECT_RE.match(line)
     if not m:
         result.error(f"subject does not match 'type(scope): description': {line}")
         return None
 
-    if m.group("type") not in TYPES:
+    if m.group("type") not in allowed_types:
         result.error(f"unknown type: {m.group('type')}")
 
     scope = m.group("scope")
