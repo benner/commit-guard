@@ -80,6 +80,19 @@ Available checks:
 * `signed-off` - `Signed-off-by:` trailer exists
 * `signature` - Verify GPG or SSH signature
 
+### Type validation
+
+By default the standard conventional commit types are accepted. Use `--types`
+to replace the allowed set entirely:
+
+```bash
+# restrict to a subset
+commit-guard --types feat,fix,chore
+
+# add a project-specific type
+commit-guard --types feat,fix,docs,style,refactor,perf,test,build,ci,chore,revert,wip
+```
+
 ### Scope validation
 
 By default any scope is accepted and scope is optional. Use `--scopes` to
@@ -100,7 +113,7 @@ commit-guard --scopes auth,api --require-scope
 ### Configuration file
 
 Place `.commit-guard.toml` in your project root (or any parent directory) to
-set defaults for `enable`, `disable`, `scopes`, and `require-scope`.
+set defaults for `enable`, `disable`, `scopes`, `require-scope`, and `types`.
 commit-guard searches upward from the working directory and uses the first file
 found.
 
@@ -109,6 +122,7 @@ found.
 disable = ["signature", "body"]
 scopes = ["auth", "api", "db"]
 require-scope = true
+types = ["feat", "fix", "chore", "wip"]
 ```
 
 ```toml
@@ -116,8 +130,8 @@ require-scope = true
 enable = ["subject", "imperative"]
 ```
 
-CLI flags (`--enable`, `--disable`, `--scopes`, `--require-scope`) take full
-precedence and ignore config file values when provided.
+CLI flags (`--enable`, `--disable`, `--scopes`, `--require-scope`, `--types`)
+take full precedence and ignore config file values when provided.
 
 ### Checking a range of commits
 
@@ -185,8 +199,9 @@ body
 trailers
 ```
 
-Supported types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`,
-`build`, `ci`, `chore`, `revert`.
+Default types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`,
+`build`, `ci`, `chore`, `revert`. Override with `--types` or the `types` config
+key.
 
 Scope is optional. Mark breaking changes with `!` before
 the colon.

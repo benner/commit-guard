@@ -120,13 +120,20 @@ def _strip_comments(message):
     )
 
 
-def check_subject(line, result, allowed_scopes=frozenset(), *, require_scope=False):
+def check_subject(
+    line,
+    result,
+    allowed_scopes=frozenset(),
+    allowed_types=TYPES,
+    *,
+    require_scope=False,
+):
     m = SUBJECT_RE.match(line)
     if not m:
         result.error(f"subject does not match 'type(scope): description': {line}")
         return None
 
-    if m.group("type") not in TYPES:
+    if m.group("type") not in allowed_types:
         result.error(f"unknown type: {m.group('type')}")
 
     scope = m.group("scope")
@@ -223,6 +230,7 @@ class Args:
     enabled: frozenset
     allowed_scopes: frozenset
     require_scope: bool
+    allowed_types: frozenset
 
 
 def _resolve_enabled(args, config, parser):
@@ -239,6 +247,14 @@ def _resolve_enabled(args, config, parser):
     else:
         enabled = ALL_CHECKS
     return enabled
+
+
+def _resolve_types(args, config):
+    if args.types:
+        return frozenset(t.strip() for t in args.types.split(","))
+    if config.get("types"):
+        return frozenset(config["types"])
+    return TYPES
 
 
 def _resolve_scopes(args, config):
@@ -292,10 +308,16 @@ def _parse_args():
         default=False,
         help="require a scope in the subject line",
     )
+    parser.add_argument(
+        "--types",
+        metavar="TYPE[,TYPE,...]",
+        help="allowed commit types (replaces defaults when set)",
+    )
     args = parser.parse_args()
     config = _load_config()
     enabled = _resolve_enabled(args, config, parser)
     allowed_scopes, require_scope = _resolve_scopes(args, config)
+    allowed_types = _resolve_types(args, config)
 
     if args.message_file:
         rev = None
@@ -316,6 +338,7 @@ def _parse_args():
         enabled=enabled,
         allowed_scopes=allowed_scopes,
         require_scope=require_scope,
+        allowed_types=allowed_types,
     )
 
 
@@ -341,7 +364,11 @@ def main():
     desc = None
     if Check.SUBJECT in args.enabled:
         desc = check_subject(
-            lines[0], result, args.allowed_scopes, require_scope=args.require_scope
+            lines[0],
+            result,
+            args.allowed_scopes,
+            args.allowed_types,
+            require_scope=args.require_scope,
         )
     if Check.IMPERATIVE in args.enabled:
         if desc is None:
