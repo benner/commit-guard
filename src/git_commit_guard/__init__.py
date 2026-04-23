@@ -169,6 +169,7 @@ def check_imperative(desc, result):
 
 
 def check_body(lines, result):
+    separator = lines[1] if len(lines) > 1 else ""
     if len(lines) < 3:  # noqa: PLR2004
         result.error("missing body")
         return
