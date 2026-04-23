@@ -160,6 +160,12 @@ commit-guard --range v1.0..v2.0
 commit-guard --range origin/main..HEAD --enable subject,imperative
 ```
 
+Merge commits are excluded by default. Use `--include-merges` to check them:
+
+```bash
+commit-guard --range origin/main..HEAD --include-merges
+```
+
 An empty range (no commits) exits non-zero by default — this catches
 misconfigured range specs in CI. Use `--allow-empty` to exit 0 instead:
 
