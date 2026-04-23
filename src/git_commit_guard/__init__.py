@@ -120,11 +120,12 @@ def _strip_comments(message):
     )
 
 
-def check_subject(
+def check_subject(  # noqa: PLR0913 Too many arguments in function definition (6 > 5)
     line,
     result,
     allowed_scopes=frozenset(),
     allowed_types=TYPES,
+    max_subject_length=MAX_SUBJECT_LEN,
     *,
     require_scope=False,
 ):
@@ -147,8 +148,8 @@ def check_subject(
         result.error("description must not start with uppercase")
     if desc.endswith("."):
         result.error("description must not end with period")
-    if len(line) > MAX_SUBJECT_LEN:
-        result.error(f"subject too long: {len(line)} > {MAX_SUBJECT_LEN}")
+    if len(line) > max_subject_length:
+        result.error(f"subject too long: {len(line)} > {max_subject_length}")
     return desc
 
 

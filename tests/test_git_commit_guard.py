@@ -148,6 +148,16 @@ class TestCheckSubject:
         check_subject("fix(anything): add token", r, allowed_scopes=frozenset())
         assert r.ok
 
+    def test_custom_max_length_enforced(self):
+        r = Result()
+        check_subject("fix: add thing", r, max_subject_length=10)
+        assert not r.ok
+
+    def test_custom_max_length_passes(self):
+        r = Result()
+        check_subject("fix: ok", r, max_subject_length=10)
+        assert r.ok
+
     def test_custom_type_passes(self):
         r = Result()
         check_subject("wip: add thing", r, allowed_types=frozenset(["wip"]))
