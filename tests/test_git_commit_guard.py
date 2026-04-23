@@ -1,10 +1,11 @@
 import subprocess
-from argparse import ArgumentParser
+from argparse import ArgumentParser, Namespace
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from git_commit_guard import (
+    TYPES,
     Result,
     _download_if_missing,
     _ensure_nltk_data,
@@ -13,6 +14,7 @@ from git_commit_guard import (
     _parse_checks,
     _parse_config_checks,
     _report,
+    _resolve_types,
     _strip_comments,
     check_body,
     check_imperative,
@@ -418,6 +420,23 @@ class TestParseConfigChecks:
             _parse_config_checks({"disable": ["bogus"]}, "disable")
 
 
+class TestResolveTypes:
+    def test_defaults_when_no_config_or_flag(self):
+        assert _resolve_types(Namespace(types=None), {}) == TYPES
+
+    def test_cli_flag_replaces_defaults(self):
+        result = _resolve_types(Namespace(types="wip,deploy"), {})
+        assert result == frozenset({"wip", "deploy"})
+
+    def test_config_replaces_defaults(self):
+        result = _resolve_types(Namespace(types=None), {"types": ["wip", "deploy"]})
+        assert result == frozenset({"wip", "deploy"})
+
+    def test_cli_overrides_config(self):
+        result = _resolve_types(Namespace(types="wip"), {"types": ["deploy"]})
+        assert result == frozenset({"wip"})
+
+
 class TestParseChecks:
     def test_invalid_check_name(self):
         parser = ArgumentParser()
@@ -647,6 +666,70 @@ class TestMain:
             patch(
                 "git_commit_guard._load_config",
                 return_value={"disable": ["subject"]},
+            ),
+        ):
+            assert main() == 0
+
+    def test_types_flag_valid(self, tmp_path):
+        f = tmp_path / "msg"
+        f.write_text("wip: add thing\n\nbody\n\nSigned-off-by: A User <a@b.com>")
+        argv = [
+            "cg",
+            "--message-file",
+            str(f),
+            "--disable",
+            "signature",
+            "--types",
+            "wip,feat,fix",
+        ]
+        with patch("sys.argv", argv):
+            assert main() == 0
+
+    def test_types_flag_invalid(self, tmp_path):
+        f = tmp_path / "msg"
+        f.write_text("chore: add thing\n\nbody\n\nSigned-off-by: A User <a@b.com>")
+        argv = [
+            "cg",
+            "--message-file",
+            str(f),
+            "--disable",
+            "signature",
+            "--types",
+            "feat,fix",
+        ]
+        with patch("sys.argv", argv):
+            assert main() == 1
+
+    def test_types_from_config(self, tmp_path):
+        f = tmp_path / "msg"
+        f.write_text("wip: add thing\n\nbody\n\nSigned-off-by: A User <a@b.com>")
+        argv = ["cg", "--message-file", str(f), "--disable", "signature"]
+        with (
+            patch("sys.argv", argv),
+            patch(
+                "git_commit_guard._load_config",
+                return_value={"types": ["wip", "feat"]},
+            ),
+        ):
+            assert main() == 0
+
+    def test_types_cli_overrides_config(self, tmp_path):
+        f = tmp_path / "msg"
+        f.write_text("wip: add thing\n\nbody\n\nSigned-off-by: A User <a@b.com>")
+        argv = [
+            "cg",
+            "--message-file",
+            str(f),
+            "--disable",
+            "signature",
+            "--types",
+            "wip",
+        ]
+        with (
+            patch("sys.argv", argv),
+            patch(
+                "git_commit_guard._load_config",
+                return_value={"types": ["deploy"]},
             ),
         ):
             assert main() == 0
