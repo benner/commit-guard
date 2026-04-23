@@ -1,0 +1,33 @@
+---
+name: Release
+on:  # yamllint disable-line rule:truthy
+  push:
+    tags:
+      - 'v*'
+permissions:
+  contents: write
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        # yamllint disable-line rule:line-length
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Generate release notes
+        id: git-cliff
+        # yamllint disable-line rule:line-length
+        uses: orhun/git-cliff-action@c93ef52f3d0ddcdcc9bd5447d98d458a11cd4f72  # v4.7.1
+        with:
+          args: --current
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+          NOTES_FILE: ${{ steps.git-cliff.outputs.changelog }}
+        run: |-
+          gh release create "$TAG" \
+            --title "$TAG" \
+            --notes-file "$NOTES_FILE"
