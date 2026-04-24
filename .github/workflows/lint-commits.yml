@@ -7,8 +7,6 @@ permissions:
 jobs:
   lint-commits:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
       - name: Checkout code
         # yamllint disable-line rule:line-length
@@ -16,29 +14,15 @@ jobs:
         with:
           persist-credentials: false
           fetch-depth: 0
-      - name: Install Python
-        # yamllint disable-line rule:line-length
-        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
-        with:
-          python-version: '3.12'
-      - name: Install uv
-        # yamllint disable-line rule:line-length
-        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78  # v7.6.0
-      - name: Install commit-guard
-        run: uv pip install --system .
       - name: Cache NLTK data
+        # yamllint disable-line rule:line-length
         uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7  # v5.0.4
         with:
           path: ~/nltk_data
           key: nltk-averaged-perceptron-tagger-punkt
       - name: Lint commits
-        env:
-          BASE_REF: ${{ github.base_ref }}
-        run: |-
-          commits=$(git log --no-merges --format="%H" "origin/$BASE_REF"..HEAD)
-          failed=0
-          for sha in $commits; do
-            echo "--- checking $sha ---"
-            commit-guard --disable signature "$sha" || failed=1
-          done
-          exit $failed
+        # yamllint disable-line rule:line-length
+        uses: benner/commit-guard@cad366366cd6d2691f7c36ff5e7a9999279906dd  # v0.12.0
+        with:
+          range: origin/${{ github.base_ref }}..HEAD
+          disable: signature
