@@ -120,12 +120,13 @@ def _strip_comments(message):
     )
 
 
-def check_subject(  # noqa: PLR0913 Too many arguments in function definition (6 > 5)
+def check_subject(  # noqa: PLR0913 Too many arguments in function definition (7 > 5)
     line,
     result,
     allowed_scopes=frozenset(),
     allowed_types=TYPES,
     max_subject_length=MAX_SUBJECT_LEN,
+    min_description_length=0,
     *,
     require_scope=False,
 ):
@@ -150,6 +151,8 @@ def check_subject(  # noqa: PLR0913 Too many arguments in function definition (6
         result.error("description must not end with period")
     if len(line) > max_subject_length:
         result.error(f"subject too long: {len(line)} > {max_subject_length}")
+    if min_description_length > 0 and len(desc) < min_description_length:
+        result.error(f"description too short: {len(desc)} < {min_description_length}")
     return desc
 
 
@@ -250,6 +253,7 @@ class Args:
     require_scope: bool
     allowed_types: frozenset
     max_subject_length: int
+    min_description_length: int
     rev_range: str | None
     allow_empty: bool
     include_merges: bool
@@ -277,6 +281,14 @@ def _resolve_max_subject_length(args, config):
     if "max-subject-length" in config:
         return config["max-subject-length"]
     return MAX_SUBJECT_LEN
+
+
+def _resolve_min_description_length(args, config):
+    if args.min_description_length is not None:
+        return args.min_description_length
+    if "min-description-length" in config:
+        return config["min-description-length"]
+    return 0
 
 
 def _resolve_types(args, config):
@@ -351,6 +363,13 @@ def _parse_args():
         help=f"maximum subject line length (default: {MAX_SUBJECT_LEN})",
     )
     parser.add_argument(
+        "--min-description-length",
+        type=int,
+        default=None,
+        metavar="N",
+        help="minimum description length in characters (default: 0, off)",
+    )
+    parser.add_argument(
         "--range",
         dest="rev_range",
         metavar="REF..REF",
@@ -374,6 +393,7 @@ def _parse_args():
     allowed_scopes, require_scope = _resolve_scopes(args, config)
     allowed_types = _resolve_types(args, config)
     max_subject_length = _resolve_max_subject_length(args, config)
+    min_description_length = _resolve_min_description_length(args, config)
 
     if args.allow_empty and not args.rev_range:
         parser.error("--allow-empty requires --range")
@@ -406,6 +426,7 @@ def _parse_args():
         require_scope=require_scope,
         allowed_types=allowed_types,
         max_subject_length=max_subject_length,
+        min_description_length=min_description_length,
         rev_range=args.rev_range,
         allow_empty=args.allow_empty,
         include_merges=args.include_merges,
@@ -432,6 +453,7 @@ def _run_checks(args, rev, message, result):
             args.allowed_scopes,
             args.allowed_types,
             args.max_subject_length,
+            args.min_description_length,
             require_scope=args.require_scope,
         )
     if Check.IMPERATIVE in args.enabled:
