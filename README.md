@@ -150,8 +150,9 @@ independently of `--enable`/`--disable`.
 
 Place `.commit-guard.toml` in your project root (or any parent directory) to
 set defaults for `enable`, `disable`, `scopes`, `require-scope`, `types`,
-`max-subject-length`, and `min-description-length`. commit-guard searches
-upward from the working directory and uses the first file found.
+`max-subject-length`, `min-description-length`, and `require-trailers`.
+commit-guard searches upward from the working directory and uses the first
+file found.
 
 ```toml
 # .commit-guard.toml
@@ -161,6 +162,7 @@ require-scope = true
 types = ["feat", "fix", "chore", "wip"]
 max-subject-length = 100
 min-description-length = 10
+require-trailers = ["Closes", "Reviewed-by"]
 ```
 
 ```toml
@@ -169,8 +171,8 @@ enable = ["subject", "imperative"]
 ```
 
 CLI flags (`--enable`, `--disable`, `--scopes`, `--require-scope`, `--types`,
-`--max-subject-length`, `--min-description-length`) take full precedence and
-ignore config file values when provided.
+`--max-subject-length`, `--min-description-length`, `--require-trailer`) take
+full precedence and ignore config file values when provided.
 
 ### Checking a range of commits
 
@@ -248,6 +250,7 @@ jobs:
           disable: signed-off,signature
           scopes: auth,api,db
           require-scope: 'true'
+          require-trailer: 'Closes,Reviewed-by'
           max-subject-length: '100'
           min-description-length: '10'
 ```
