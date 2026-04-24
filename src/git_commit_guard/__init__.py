@@ -157,6 +157,7 @@ def check_subject(  # noqa: PLR0913 Too many arguments in function definition (7
 
 
 def check_imperative(desc, result):
+    _ensure_nltk_data()
     tokens = nltk.word_tokenize(desc.lower())
     if not tokens:
         return
@@ -472,9 +473,6 @@ def _run_checks(args, rev, message, result):
 
 def main():
     args = _parse_args()
-
-    if Check.IMPERATIVE in args.enabled:
-        _ensure_nltk_data()
 
     if args.rev_range:
         revs = _get_range_revs(args.rev_range, include_merges=args.include_merges)
