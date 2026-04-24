@@ -89,6 +89,13 @@ The default maximum subject line length is 72 characters. Override with
 commit-guard --max-subject-length 100
 ```
 
+By default there is no minimum description length. Enforce one with
+`--min-description-length`:
+
+```bash
+commit-guard --min-description-length 10
+```
+
 ### Type validation
 
 By default the standard conventional commit types are accepted. Use `--types`
@@ -122,9 +129,9 @@ commit-guard --scopes auth,api --require-scope
 ### Configuration file
 
 Place `.commit-guard.toml` in your project root (or any parent directory) to
-set defaults for `enable`, `disable`, `scopes`, `require-scope`, `types`, and
-`max-subject-length`. commit-guard searches upward from the working directory
-and uses the first file found.
+set defaults for `enable`, `disable`, `scopes`, `require-scope`, `types`,
+`max-subject-length`, and `min-description-length`. commit-guard searches
+upward from the working directory and uses the first file found.
 
 ```toml
 # .commit-guard.toml
@@ -133,6 +140,7 @@ scopes = ["auth", "api", "db"]
 require-scope = true
 types = ["feat", "fix", "chore", "wip"]
 max-subject-length = 100
+min-description-length = 10
 ```
 
 ```toml
@@ -141,8 +149,8 @@ enable = ["subject", "imperative"]
 ```
 
 CLI flags (`--enable`, `--disable`, `--scopes`, `--require-scope`, `--types`,
-`--max-subject-length`) take full precedence and ignore config file values when
-provided.
+`--max-subject-length`, `--min-description-length`) take full precedence and
+ignore config file values when provided.
 
 ### Checking a range of commits
 

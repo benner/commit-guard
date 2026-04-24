@@ -17,6 +17,7 @@ from git_commit_guard import (
     _parse_config_checks,
     _report,
     _resolve_max_subject_length,
+    _resolve_min_description_length,
     _resolve_types,
     _strip_comments,
     check_body,
@@ -159,6 +160,22 @@ class TestCheckSubject:
     def test_custom_max_length_passes(self):
         r = Result()
         check_subject("fix: ok", r, max_subject_length=10)
+        assert r.ok
+
+    def test_min_description_length_zero_disables_check(self):
+        r = Result()
+        check_subject("fix: add x", r, min_description_length=0)
+        assert r.ok
+
+    def test_min_description_length_enforced(self):
+        r = Result()
+        check_subject("fix: add x", r, min_description_length=6)
+        assert not r.ok
+        assert any("description too short" in m for _, m in r.errors)
+
+    def test_min_description_length_exact_passes(self):
+        r = Result()
+        check_subject("fix: hello", r, min_description_length=5)
         assert r.ok
 
     def test_custom_type_passes(self):
@@ -453,6 +470,32 @@ class TestResolveMaxSubjectLength:
             Namespace(max_subject_length=50), {"max-subject-length": 60}
         )
         assert result == 50  # noqa: PLR2004 Magic value used in comparison, consider replacing 50 with a constant variable
+
+
+class TestResolveMinDescriptionLength:
+    def test_defaults_to_zero(self):
+        result = _resolve_min_description_length(
+            Namespace(min_description_length=None), {}
+        )
+        assert result == 0
+
+    def test_cli_flag_overrides_default(self):
+        result = _resolve_min_description_length(
+            Namespace(min_description_length=10), {}
+        )
+        assert result == 10  # noqa: PLR2004 Magic value used in comparison, consider replacing 10 with a constant variable
+
+    def test_config_overrides_default(self):
+        result = _resolve_min_description_length(
+            Namespace(min_description_length=None), {"min-description-length": 8}
+        )
+        assert result == 8  # noqa: PLR2004 Magic value used in comparison, consider replacing 8 with a constant variable
+
+    def test_cli_overrides_config(self):
+        result = _resolve_min_description_length(
+            Namespace(min_description_length=10), {"min-description-length": 8}
+        )
+        assert result == 10  # noqa: PLR2004 Magic value used in comparison, consider replacing 10 with a constant variable
 
 
 class TestResolveTypes:
@@ -808,6 +851,70 @@ class TestMain:
             patch(
                 "git_commit_guard._load_config",
                 return_value={"max-subject-length": 5},
+            ),
+        ):
+            assert main() == 0
+
+    def test_min_description_length_flag_passes(self, tmp_path):
+        f = tmp_path / "msg"
+        f.write_text("fix: add thing\n\nbody\n\nSigned-off-by: A User <a@b.com>")
+        argv = [
+            "cg",
+            "--message-file",
+            str(f),
+            "--disable",
+            "signature",
+            "--min-description-length",
+            "5",
+        ]
+        with patch("sys.argv", argv):
+            assert main() == 0
+
+    def test_min_description_length_flag_fails(self, tmp_path):
+        f = tmp_path / "msg"
+        f.write_text("fix: add x\n\nbody\n\nSigned-off-by: A User <a@b.com>")
+        argv = [
+            "cg",
+            "--message-file",
+            str(f),
+            "--disable",
+            "signature,imperative",
+            "--min-description-length",
+            "6",
+        ]
+        with patch("sys.argv", argv):
+            assert main() == 1
+
+    def test_min_description_length_from_config(self, tmp_path):
+        f = tmp_path / "msg"
+        f.write_text("fix: add x\n\nbody\n\nSigned-off-by: A User <a@b.com>")
+        argv = ["cg", "--message-file", str(f), "--disable", "signature,imperative"]
+        with (
+            patch("sys.argv", argv),
+            patch(
+                "git_commit_guard._load_config",
+                return_value={"min-description-length": 6},
+            ),
+        ):
+            assert main() == 1
+
+    def test_min_description_length_cli_overrides_config(self, tmp_path):
+        f = tmp_path / "msg"
+        f.write_text("fix: add x\n\nbody\n\nSigned-off-by: A User <a@b.com>")
+        argv = [
+            "cg",
+            "--message-file",
+            str(f),
+            "--disable",
+            "signature,imperative",
+            "--min-description-length",
+            "3",
+        ]
+        with (
+            patch("sys.argv", argv),
+            patch(
+                "git_commit_guard._load_config",
+                return_value={"min-description-length": 6},
             ),
         ):
             assert main() == 0
