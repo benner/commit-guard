@@ -18,10 +18,12 @@ from git_commit_guard import (
     _report,
     _resolve_max_subject_length,
     _resolve_min_description_length,
+    _resolve_required_trailers,
     _resolve_types,
     _strip_comments,
     check_body,
     check_imperative,
+    check_required_trailers,
     check_signature,
     check_signed_off,
     check_subject,
@@ -271,6 +273,83 @@ class TestCheckSignedOff:
         r = Result()
         check_signed_off("fix: add thing\n\nSigned-off-by: John Doe", r)
         assert not r.ok
+
+
+class TestCheckRequiredTrailers:
+    def test_present_passes(self):
+        r = Result()
+        check_required_trailers("fix: add x\n\nbody\n\nCloses: #42", ["Closes"], r)
+        assert r.ok
+
+    def test_missing_fails(self):
+        r = Result()
+        check_required_trailers("fix: add x\n\nbody", ["Closes"], r)
+        assert not r.ok
+        assert "missing required trailer: Closes" in r.errors[0][1]
+
+    def test_multiple_all_present_passes(self):
+        r = Result()
+        check_required_trailers(
+            "fix: add x\n\nbody\n\nCloses: #42\nReviewed-by: Jane",
+            ["Closes", "Reviewed-by"],
+            r,
+        )
+        assert r.ok
+
+    def test_multiple_one_missing_fails(self):
+        r = Result()
+        check_required_trailers(
+            "fix: add x\n\nbody\n\nCloses: #42",
+            ["Closes", "Reviewed-by"],
+            r,
+        )
+        assert not r.ok
+        assert any("Reviewed-by" in msg for _, msg in r.errors)
+
+    def test_case_sensitive(self):
+        r = Result()
+        check_required_trailers("fix: add x\n\nbody\n\ncloses: #42", ["Closes"], r)
+        assert not r.ok
+
+    def test_empty_required_list_always_passes(self):
+        r = Result()
+        check_required_trailers("fix: add x", [], r)
+        assert r.ok
+
+
+class TestResolveRequiredTrailers:
+    def test_defaults_to_empty(self):
+        assert _resolve_required_trailers(Namespace(require_trailer=None), {}) == []
+
+    def test_cli_flag_single(self):
+        result = _resolve_required_trailers(Namespace(require_trailer="Closes"), {})
+        assert result == ["Closes"]
+
+    def test_cli_flag_multiple(self):
+        result = _resolve_required_trailers(
+            Namespace(require_trailer="Closes,Reviewed-by"), {}
+        )
+        assert result == ["Closes", "Reviewed-by"]
+
+    def test_cli_flag_strips_spaces(self):
+        result = _resolve_required_trailers(
+            Namespace(require_trailer="Closes, Reviewed-by"), {}
+        )
+        assert result == ["Closes", "Reviewed-by"]
+
+    def test_config(self):
+        result = _resolve_required_trailers(
+            Namespace(require_trailer=None),
+            {"require-trailers": ["Closes", "Reviewed-by"]},
+        )
+        assert result == ["Closes", "Reviewed-by"]
+
+    def test_cli_overrides_config(self):
+        result = _resolve_required_trailers(
+            Namespace(require_trailer="Fixes"),
+            {"require-trailers": ["Closes"]},
+        )
+        assert result == ["Fixes"]
 
 
 class TestCheckImperative:
@@ -1103,3 +1182,89 @@ class TestGetRangeRevs:
             pytest.raises(SystemExit, match="git error"),
         ):
             _get_range_revs("bogus")
+
+
+class TestRequireTrailerIntegration:
+    def test_require_trailer_flag_passes(self, tmp_path):
+        f = tmp_path / "msg"
+        f.write_text(
+            "fix: add thing\n\nbody\n\nCloses: #42\nSigned-off-by: A <a@b.com>"
+        )
+        argv = [
+            "cg",
+            "--message-file",
+            str(f),
+            "--disable",
+            "signature,imperative",
+            "--require-trailer",
+            "Closes",
+        ]
+        with patch("sys.argv", argv):
+            assert main() == 0
+
+    def test_require_trailer_flag_fails(self, tmp_path):
+        f = tmp_path / "msg"
+        f.write_text("fix: add thing\n\nbody\n\nSigned-off-by: A <a@b.com>")
+        argv = [
+            "cg",
+            "--message-file",
+            str(f),
+            "--disable",
+            "signature,imperative",
+            "--require-trailer",
+            "Closes",
+        ]
+        with patch("sys.argv", argv):
+            assert main() == 1
+
+    def test_require_trailer_multiple_passes(self, tmp_path):
+        f = tmp_path / "msg"
+        f.write_text(
+            "fix: add thing\n\nbody\n\n"
+            "Closes: #42\nReviewed-by: Jane\nSigned-off-by: A <a@b.com>"
+        )
+        argv = [
+            "cg",
+            "--message-file",
+            str(f),
+            "--disable",
+            "signature,imperative",
+            "--require-trailer",
+            "Closes,Reviewed-by",
+        ]
+        with patch("sys.argv", argv):
+            assert main() == 0
+
+    def test_require_trailer_from_config(self, tmp_path):
+        f = tmp_path / "msg"
+        f.write_text("fix: add thing\n\nbody\n\nSigned-off-by: A <a@b.com>")
+        argv = ["cg", "--message-file", str(f), "--disable", "signature,imperative"]
+        with (
+            patch("sys.argv", argv),
+            patch(
+                "git_commit_guard._load_config",
+                return_value={"require-trailers": ["Closes"]},
+            ),
+        ):
+            assert main() == 1
+
+    def test_require_trailer_cli_overrides_config(self, tmp_path):
+        f = tmp_path / "msg"
+        f.write_text("fix: add thing\n\nbody\n\nFixes: #99\nSigned-off-by: A <a@b.com>")
+        argv = [
+            "cg",
+            "--message-file",
+            str(f),
+            "--disable",
+            "signature,imperative",
+            "--require-trailer",
+            "Fixes",
+        ]
+        with (
+            patch("sys.argv", argv),
+            patch(
+                "git_commit_guard._load_config",
+                return_value={"require-trailers": ["Closes"]},
+            ),
+        ):
+            assert main() == 0
