@@ -240,7 +240,7 @@ Add to your `.pre-commit-config.yaml`:
 ---
 repos:
   - repo: https://github.com/benner/commit-guard
-    rev: v0.1.0
+    rev: v0.12.0
     hooks:
       - id: commit-guard
       - id: commit-guard-signature
