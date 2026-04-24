@@ -181,6 +181,57 @@ misconfigured range specs in CI. Use `--allow-empty` to exit 0 instead:
 commit-guard --range origin/main..HEAD --allow-empty
 ```
 
+### GitHub Actions
+
+```yaml
+steps:
+  - uses: actions/checkout@v4
+    with:
+      fetch-depth: 0
+  - uses: benner/commit-guard@vX.Y.Z
+```
+
+Check all commits in a pull request:
+
+```yaml
+jobs:
+  lint-commits:
+    runs-on: ubuntu-latest
+    env:
+      PR_BASE: ${{ github.event.pull_request.base.sha }}
+      PR_HEAD: ${{ github.event.pull_request.head.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: benner/commit-guard@vX.Y.Z
+        with:
+          range: ${{ env.PR_BASE }}..${{ env.PR_HEAD }}
+```
+
+All inputs are optional and mirror the CLI flags:
+
+```yaml
+jobs:
+  lint-commits:
+    runs-on: ubuntu-latest
+    env:
+      PR_BASE: ${{ github.event.pull_request.base.sha }}
+      PR_HEAD: ${{ github.event.pull_request.head.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: benner/commit-guard@vX.Y.Z
+        with:
+          range: ${{ env.PR_BASE }}..${{ env.PR_HEAD }}
+          disable: signed-off,signature
+          scopes: auth,api,db
+          require-scope: 'true'
+          max-subject-length: '100'
+          min-description-length: '10'
+```
+
 ### pre-commit
 
 Add to your `.pre-commit-config.yaml`:

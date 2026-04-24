@@ -1,0 +1,85 @@
+---
+name: commit-guard
+description: Conventional commit message linter with imperative mood detection
+author: Nerijus Bendžiūnas
+branding:
+  icon: shield
+  color: green
+inputs:
+  rev:
+    description: Commit SHA to check (defaults to HEAD)
+    required: false
+  range:
+    description: Revision range to check (e.g. abc123..HEAD)
+    required: false
+  enable:
+    description: Comma-separated checks to enable
+    required: false
+  disable:
+    description: Comma-separated checks to disable
+    required: false
+  scopes:
+    description: Comma-separated list of allowed scopes
+    required: false
+  require-scope:
+    description: Require a scope in the subject line
+    required: false
+    default: 'false'
+  types:
+    description: Comma-separated list of allowed types (replaces defaults)
+    required: false
+  max-subject-length:
+    description: Maximum subject line length (default 72)
+    required: false
+  min-description-length:
+    description: Minimum description length in characters (default 0, off)
+    required: false
+  allow-empty:
+    description: Exit 0 when --range yields no commits
+    required: false
+    default: 'false'
+  include-merges:
+    description: Include merge commits when checking a range
+    required: false
+    default: 'false'
+runs:
+  using: composite
+  steps:
+    - name: Set up uv
+      # yamllint disable-line rule:line-length
+      uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78  # v7.6.0
+      with:
+        enable-cache: false
+    - name: Install commit-guard
+      run: uv tool install git-commit-guard
+      shell: bash
+    - name: Run commit-guard
+      env:
+        CG_REV: ${{ inputs.rev }}
+        CG_RANGE: ${{ inputs.range }}
+        CG_ENABLE: ${{ inputs.enable }}
+        CG_DISABLE: ${{ inputs.disable }}
+        CG_SCOPES: ${{ inputs.scopes }}
+        CG_REQUIRE_SCOPE: ${{ inputs.require-scope }}
+        CG_TYPES: ${{ inputs.types }}
+        CG_MAX_SUBJECT_LENGTH: ${{ inputs.max-subject-length }}
+        CG_MIN_DESCRIPTION_LENGTH: ${{ inputs.min-description-length }}
+        CG_ALLOW_EMPTY: ${{ inputs.allow-empty }}
+        CG_INCLUDE_MERGES: ${{ inputs.include-merges }}
+      run: |
+        ARGS=()
+        [[ -n "$CG_REV" ]] && ARGS+=("$CG_REV")
+        [[ -n "$CG_RANGE" ]] && ARGS+=(--range "$CG_RANGE")
+        [[ -n "$CG_ENABLE" ]] && ARGS+=(--enable "$CG_ENABLE")
+        [[ -n "$CG_DISABLE" ]] && ARGS+=(--disable "$CG_DISABLE")
+        [[ -n "$CG_SCOPES" ]] && ARGS+=(--scopes "$CG_SCOPES")
+        [[ "$CG_REQUIRE_SCOPE" == "true" ]] && ARGS+=(--require-scope)
+        [[ -n "$CG_TYPES" ]] && ARGS+=(--types "$CG_TYPES")
+        [[ -n "$CG_MAX_SUBJECT_LENGTH" ]] && \
+            ARGS+=(--max-subject-length "$CG_MAX_SUBJECT_LENGTH")
+        [[ -n "$CG_MIN_DESCRIPTION_LENGTH" ]] && \
+            ARGS+=(--min-description-length "$CG_MIN_DESCRIPTION_LENGTH")
+        [[ "$CG_ALLOW_EMPTY" == "true" ]] && ARGS+=(--allow-empty)
+        [[ "$CG_INCLUDE_MERGES" == "true" ]] && ARGS+=(--include-merges)
+        commit-guard "${ARGS[@]}"
+      shell: bash
