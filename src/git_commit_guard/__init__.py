@@ -224,10 +224,14 @@ def _get_message(rev):
         sys.exit(f"git error: {stderr}")
 
 
-def _get_range_revs(rev_range):
+def _get_range_revs(rev_range, *, include_merges=False):
+    cmd = ["git", "log", "--format=%H"]
+    if not include_merges:
+        cmd.append("--no-merges")
+    cmd.append(rev_range)
     try:
         output = subprocess.check_output(  # noqa: S603
-            ["git", "log", "--format=%H", rev_range],  # noqa: S607
+            cmd,
             text=True,
             stderr=subprocess.PIPE,
             timeout=GIT_TIMEOUT,
@@ -247,6 +251,8 @@ class Args:
     allowed_types: frozenset
     max_subject_length: int
     rev_range: str | None
+    allow_empty: bool
+    include_merges: bool
 
 
 def _resolve_enabled(args, config, parser):
@@ -350,12 +356,29 @@ def _parse_args():
         metavar="REF..REF",
         help="check all commits in the given revision range",
     )
+    parser.add_argument(
+        "--allow-empty",
+        action="store_true",
+        default=False,
+        help="exit 0 when --range yields no commits (default: exit 1)",
+    )
+    parser.add_argument(
+        "--include-merges",
+        action="store_true",
+        default=False,
+        help="include merge commits when checking a range (default: excluded)",
+    )
     args = parser.parse_args()
     config = _load_config()
     enabled = _resolve_enabled(args, config, parser)
     allowed_scopes, require_scope = _resolve_scopes(args, config)
     allowed_types = _resolve_types(args, config)
     max_subject_length = _resolve_max_subject_length(args, config)
+
+    if args.allow_empty and not args.rev_range:
+        parser.error("--allow-empty requires --range")
+    if args.include_merges and not args.rev_range:
+        parser.error("--include-merges requires --range")
 
     if args.rev_range:
         if args.rev is not None or args.message_file:
@@ -384,6 +407,8 @@ def _parse_args():
         allowed_types=allowed_types,
         max_subject_length=max_subject_length,
         rev_range=args.rev_range,
+        allow_empty=args.allow_empty,
+        include_merges=args.include_merges,
     )
 
 
@@ -430,10 +455,10 @@ def main():
         _ensure_nltk_data()
 
     if args.rev_range:
-        revs = _get_range_revs(args.rev_range)
+        revs = _get_range_revs(args.rev_range, include_merges=args.include_merges)
         if not revs:
             sys.stderr.write("no commits in range\n")
-            return 0
+            return 0 if args.allow_empty else 1
         failed = False
         for rev in revs:
             message = _strip_comments(_get_message(rev))

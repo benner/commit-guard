@@ -894,13 +894,57 @@ class TestMain:
         ):
             assert main() == 1
 
-    def test_range_empty_returns_zero(self, capsys):
+    def test_range_empty_returns_one(self, capsys):
         with (
             patch("sys.argv", ["cg", "--range", "origin/main..HEAD"]),
             patch("git_commit_guard._get_range_revs", return_value=[]),
         ):
+            assert main() == 1
+        assert "no commits in range" in capsys.readouterr().err
+
+    def test_range_empty_with_allow_empty_returns_zero(self, capsys):
+        with (
+            patch("sys.argv", ["cg", "--range", "origin/main..HEAD", "--allow-empty"]),
+            patch("git_commit_guard._get_range_revs", return_value=[]),
+        ):
             assert main() == 0
         assert "no commits in range" in capsys.readouterr().err
+
+    def test_allow_empty_without_range_exits(self):
+        with (
+            patch("sys.argv", ["cg", "--allow-empty"]),
+            pytest.raises(SystemExit),
+        ):
+            main()
+
+    def test_include_merges_without_range_exits(self):
+        with (
+            patch("sys.argv", ["cg", "--include-merges"]),
+            pytest.raises(SystemExit),
+        ):
+            main()
+
+    def test_range_include_merges_flag(self):
+        with (
+            patch(
+                "sys.argv",
+                [
+                    "cg",
+                    "--range",
+                    "origin/main..HEAD",
+                    "--include-merges",
+                    "--disable",
+                    "signature",
+                ],
+            ),
+            patch(
+                "git_commit_guard._get_range_revs",
+                return_value=["abc1234"],
+            ) as mock,
+            patch("git_commit_guard._get_message", return_value=_VALID_MSG),
+        ):
+            main()
+        mock.assert_called_once_with("origin/main..HEAD", include_merges=True)
 
     def test_range_conflicts_with_rev(self):
         with (
@@ -929,6 +973,16 @@ class TestGetRangeRevs:
             return_value="abc1234\ndef5678",
         ):
             assert _get_range_revs("origin/main..HEAD") == ["abc1234", "def5678"]
+
+    def test_excludes_merges_by_default(self):
+        with patch("git_commit_guard.subprocess.check_output", return_value="") as mock:
+            _get_range_revs("origin/main..HEAD")
+        assert "--no-merges" in mock.call_args[0][0]
+
+    def test_includes_merges_when_requested(self):
+        with patch("git_commit_guard.subprocess.check_output", return_value="") as mock:
+            _get_range_revs("origin/main..HEAD", include_merges=True)
+        assert "--no-merges" not in mock.call_args[0][0]
 
     def test_empty_range_returns_empty_list(self):
         with patch("git_commit_guard.subprocess.check_output", return_value=""):
