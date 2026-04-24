@@ -126,6 +126,26 @@ commit-guard --require-scope
 commit-guard --scopes auth,api --require-scope
 ```
 
+### Required custom trailers
+
+Require arbitrary trailers to be present in the commit message. Multiple
+trailers can be specified as a comma-separated list:
+
+```bash
+commit-guard --require-trailer Closes
+commit-guard --require-trailer "Closes,Reviewed-by"
+```
+
+In `.commit-guard.toml`:
+
+```toml
+require-trailers = ["Closes", "Reviewed-by"]
+```
+
+Trailer matching is case-sensitive and requires at least one non-space
+character after the colon (e.g. `Closes: #42`). This check runs
+independently of `--enable`/`--disable`.
+
 ### Configuration file
 
 Place `.commit-guard.toml` in your project root (or any parent directory) to

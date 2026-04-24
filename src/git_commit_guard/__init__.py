@@ -196,6 +196,13 @@ def check_signed_off(message, result):
         result.error("missing 'Signed-off-by' trailer")
 
 
+def check_required_trailers(message, required, result):
+    for trailer in required:
+        pattern = re.compile(rf"^{re.escape(trailer)}:\s+\S", re.MULTILINE)
+        if not pattern.search(message):
+            result.error(f"missing required trailer: {trailer}")
+
+
 def check_signature(rev, result):
     proc = subprocess.run(  # noqa: S603
         ["git", "verify-commit", rev],  # noqa: S607
@@ -258,6 +265,7 @@ class Args:
     rev_range: str | None
     allow_empty: bool
     include_merges: bool
+    required_trailers: list
 
 
 def _resolve_enabled(args, config, parser):
@@ -290,6 +298,14 @@ def _resolve_min_description_length(args, config):
     if "min-description-length" in config:
         return config["min-description-length"]
     return 0
+
+
+def _resolve_required_trailers(args, config):
+    if args.require_trailer:
+        return [t.strip() for t in args.require_trailer.split(",")]
+    if config.get("require-trailers"):
+        return list(config["require-trailers"])
+    return []
 
 
 def _resolve_types(args, config):
@@ -383,6 +399,11 @@ def _parse_args():
         help="exit 0 when --range yields no commits (default: exit 1)",
     )
     parser.add_argument(
+        "--require-trailer",
+        metavar="TRAILER[,TRAILER,...]",
+        help="require these trailers in the commit message",
+    )
+    parser.add_argument(
         "--include-merges",
         action="store_true",
         default=False,
@@ -395,6 +416,7 @@ def _parse_args():
     allowed_types = _resolve_types(args, config)
     max_subject_length = _resolve_max_subject_length(args, config)
     min_description_length = _resolve_min_description_length(args, config)
+    required_trailers = _resolve_required_trailers(args, config)
 
     if args.allow_empty and not args.rev_range:
         parser.error("--allow-empty requires --range")
@@ -431,6 +453,7 @@ def _parse_args():
         rev_range=args.rev_range,
         allow_empty=args.allow_empty,
         include_merges=args.include_merges,
+        required_trailers=required_trailers,
     )
 
 
@@ -467,6 +490,8 @@ def _run_checks(args, rev, message, result):
         check_body(lines, result)
     if Check.SIGNED_OFF in args.enabled:
         check_signed_off(message, result)
+    if args.required_trailers:
+        check_required_trailers(message, args.required_trailers, result)
     if Check.SIGNATURE in args.enabled and rev:
         check_signature(rev, result)
 
