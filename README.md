@@ -236,7 +236,7 @@ steps:
   - uses: actions/checkout@v4
     with:
       fetch-depth: 0
-  - uses: benner/commit-guard@v0.14.0
+  - uses: benner/commit-guard@v0.14.1
 ```
 
 Check all commits in a pull request:
@@ -252,7 +252,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: benner/commit-guard@v0.14.0
+      - uses: benner/commit-guard@v0.14.1
         with:
           range: ${{ env.PR_BASE }}..${{ env.PR_HEAD }}
 ```
@@ -270,7 +270,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: benner/commit-guard@v0.14.0
+      - uses: benner/commit-guard@v0.14.1
         with:
           range: ${{ env.PR_BASE }}..${{ env.PR_HEAD }}
           disable: signed-off,signature
@@ -289,7 +289,7 @@ Add to your `.pre-commit-config.yaml`:
 ---
 repos:
   - repo: https://github.com/benner/commit-guard
-    rev: v0.14.0
+    rev: v0.14.1
     hooks:
       - id: commit-guard
       - id: commit-guard-signature
