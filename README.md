@@ -10,10 +10,9 @@ imperative verb.
 
 ```bash
 $ commit-guard
-✗ subject does not match 'type(scope): description':
-  Merge pull request #5 from fix/branch
-✗ missing 'Signed-off-by' trailer
-✗ commit is not signed (GPG/SSH)
+  ✗ [subject] subject does not match 'type(scope): description': WIP
+  ✗ [signed-off] missing 'Signed-off-by' trailer
+  ✗ [signature] commit is not signed (GPG/SSH)
 ```
 
 ## Installation
