@@ -87,18 +87,18 @@ PREFIXES = {
 class Result:
     errors: list = field(default_factory=list)
 
-    def error(self, msg):
-        self.errors.append((Level.ERROR, msg))
+    def error(self, msg, check=None):
+        self.errors.append((check, Level.ERROR, msg))
 
-    def warn(self, msg):
-        self.errors.append((Level.WARN, msg))
+    def warn(self, msg, check=None):
+        self.errors.append((check, Level.WARN, msg))
 
-    def info(self, msg):
-        self.errors.append((Level.INFO, msg))
+    def info(self, msg, check=None):
+        self.errors.append((check, Level.INFO, msg))
 
     @property
     def ok(self):
-        return not any(lvl == Level.ERROR for lvl, _ in self.errors)
+        return not any(lvl == Level.ERROR for _, lvl, _ in self.errors)
 
 
 def _ensure_nltk_data():
@@ -132,27 +132,35 @@ def check_subject(  # noqa: PLR0913 Too many arguments in function definition (7
 ):
     m = SUBJECT_RE.match(line)
     if not m:
-        result.error(f"subject does not match 'type(scope): description': {line}")
+        result.error(
+            f"subject does not match 'type(scope): description': {line}",
+            check=Check.SUBJECT,
+        )
         return None
 
     if m.group("type") not in allowed_types:
-        result.error(f"unknown type: {m.group('type')}")
+        result.error(f"unknown type: {m.group('type')}", check=Check.SUBJECT)
 
     scope = m.group("scope")
     if require_scope and scope is None:
-        result.error("scope is required")
+        result.error("scope is required", check=Check.SUBJECT)
     if allowed_scopes and scope is not None and scope not in allowed_scopes:
-        result.error(f"unknown scope: {scope}")
+        result.error(f"unknown scope: {scope}", check=Check.SUBJECT)
 
     desc = m.group("desc")
     if desc[0].isupper():
-        result.error("description must not start with uppercase")
+        result.error("description must not start with uppercase", check=Check.SUBJECT)
     if desc.endswith("."):
-        result.error("description must not end with period")
+        result.error("description must not end with period", check=Check.SUBJECT)
     if len(line) > max_subject_length:
-        result.error(f"subject too long: {len(line)} > {max_subject_length}")
+        result.error(
+            f"subject too long: {len(line)} > {max_subject_length}", check=Check.SUBJECT
+        )
     if min_description_length > 0 and len(desc) < min_description_length:
-        result.error(f"description too short: {len(desc)} < {min_description_length}")
+        result.error(
+            f"description too short: {len(desc)} < {min_description_length}",
+            check=Check.SUBJECT,
+        )
     return desc
 
 
@@ -163,12 +171,16 @@ def check_imperative(desc, result):
         return
     first = tokens[0]
     if _NON_IMPERATIVE_SUFFIX_RE.search(first):
-        result.error(f"expected imperative verb, got '{first}' (non-imperative suffix)")
+        result.error(
+            f"expected imperative verb, got '{first}' (non-imperative suffix)",
+            check=Check.IMPERATIVE,
+        )
         return
     base = wordnet.morphy(first, wordnet.VERB)
     if base is not None and base != first:
         result.error(
-            f"expected imperative verb, got '{first}' (inflected form of '{base}')"
+            f"expected imperative verb, got '{first}' (inflected form of '{base}')",
+            check=Check.IMPERATIVE,
         )
         return
     tagged = nltk.pos_tag(["to", *tokens])
@@ -177,23 +189,24 @@ def check_imperative(desc, result):
             return
         result.error(
             f"expected imperative verb, got '{tagged[1][0]}' (POS={tagged[1][1]})",
+            check=Check.IMPERATIVE,
         )
 
 
 def check_body(lines, result):
     if len(lines) < 3:  # noqa: PLR2004
-        result.error("missing body")
+        result.error("missing body", check=Check.BODY)
         return
     if lines[1].strip():
-        result.error("missing blank line between subject and body")
+        result.error("missing blank line between subject and body", check=Check.BODY)
     body_lines = [ln for ln in lines[2:] if not _TRAILER_RE.match(ln)]
     if not any(ln.strip() for ln in body_lines):
-        result.error("missing body")
+        result.error("missing body", check=Check.BODY)
 
 
 def check_signed_off(message, result):
     if not SIGNED_OFF_RE.search(message):
-        result.error("missing 'Signed-off-by' trailer")
+        result.error("missing 'Signed-off-by' trailer", check=Check.SIGNED_OFF)
 
 
 def check_required_trailers(message, required, result):
@@ -212,12 +225,12 @@ def check_signature(rev, result):
         timeout=GIT_TIMEOUT,
     )
     if proc.returncode != 0:
-        result.error("commit is not signed (GPG/SSH)")
+        result.error("commit is not signed (GPG/SSH)", check=Check.SIGNATURE)
         return
 
     output = proc.stderr.lower()
     sig_type = "SSH" if "ssh" in output else "GPG"
-    result.info(f"signature type: {sig_type}")
+    result.info(f"signature type: {sig_type}", check=Check.SIGNATURE)
 
 
 def _get_message(rev):
@@ -458,8 +471,9 @@ def _parse_args():
 
 
 def _report(result):
-    for level, msg in result.errors:
-        sys.stderr.write(f"  {PREFIXES[level]} {msg}\n")
+    for check, level, msg in result.errors:
+        prefix = f"[{check}] " if check else ""
+        sys.stderr.write(f"  {PREFIXES[level]} {prefix}{msg}\n")
 
     if result.ok:
         sys.stderr.write("  \033[32m✓\033[0m all checks passed\n")

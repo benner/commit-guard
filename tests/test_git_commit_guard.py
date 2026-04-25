@@ -173,7 +173,7 @@ class TestCheckSubject:
         r = Result()
         check_subject("fix: add x", r, min_description_length=6)
         assert not r.ok
-        assert any("description too short" in m for _, m in r.errors)
+        assert any("description too short" in m for _, _, m in r.errors)
 
     def test_min_description_length_exact_passes(self):
         r = Result()
@@ -285,7 +285,7 @@ class TestCheckRequiredTrailers:
         r = Result()
         check_required_trailers("fix: add x\n\nbody", ["Closes"], r)
         assert not r.ok
-        assert "missing required trailer: Closes" in r.errors[0][1]
+        assert "missing required trailer: Closes" in r.errors[0][2]
 
     def test_multiple_all_present_passes(self):
         r = Result()
@@ -304,7 +304,7 @@ class TestCheckRequiredTrailers:
             r,
         )
         assert not r.ok
-        assert any("Reviewed-by" in msg for _, msg in r.errors)
+        assert any("Reviewed-by" in msg for _, _, msg in r.errors)
 
     def test_case_sensitive(self):
         r = Result()
@@ -447,7 +447,7 @@ class TestCheckSignature:
         with patch("git_commit_guard.subprocess.run", return_value=proc):
             check_signature("abc123", r)
         assert r.ok
-        assert any("GPG" in msg for _, msg in r.errors)
+        assert any("GPG" in msg for _, _, msg in r.errors)
 
     def test_ssh_signed_commit(self):
         r = Result()
@@ -455,7 +455,7 @@ class TestCheckSignature:
         with patch("git_commit_guard.subprocess.run", return_value=proc):
             check_signature("abc123", r)
         assert r.ok
-        assert any("SSH" in msg for _, msg in r.errors)
+        assert any("SSH" in msg for _, _, msg in r.errors)
 
 
 class TestGetMessage:
