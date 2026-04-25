@@ -3,10 +3,10 @@ target-version = "py312"
 [lint]
 select = ["ALL"]
 ignore = [
-  "ANN",    # flake8-annotations (ANN)
-  "COM812", # missing-trailing-comma
-  "D",      # pydocstyle (D)
-  "RET504", # Unnecessary assignment to X before `return` statement
+    "ANN",    # flake8-annotations (ANN)
+    "COM812", # missing-trailing-comma
+    "D",      # pydocstyle (D)
+    "RET504", # Unnecessary assignment to X before `return` statement
 ]
 
 [lint.per-file-ignores]
