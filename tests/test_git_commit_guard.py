@@ -1,3 +1,4 @@
+import json
 import subprocess
 from argparse import ArgumentParser, Namespace
 from unittest.mock import MagicMock, patch
@@ -15,6 +16,7 @@ from git_commit_guard import (
     _load_config,
     _parse_checks,
     _parse_config_checks,
+    _report_jsonl,
     _report_text,
     _resolve_max_subject_length,
     _resolve_min_description_length,
@@ -623,6 +625,57 @@ class TestReport:
         captured = capsys.readouterr().err
         assert "heads up" in captured
         assert "all checks passed" in captured
+
+
+class TestReportJsonl:
+    def test_ok_commit(self, capsys):
+        r = Result()
+        ret = _report_jsonl(r, "abc1234567890", "fix: add thing")
+        assert ret == 0
+        out = capsys.readouterr().out
+
+        data = json.loads(out)
+        assert data["sha"] == "abc1234567890"
+        assert data["subject"] == "fix: add thing"
+        assert data["ok"] is True
+        assert data["results"] == []
+
+    def test_failed_commit(self, capsys):
+        r = Result()
+        r.error("missing body", check="body")
+        ret = _report_jsonl(r, "abc1234567890", "fix: add thing")
+        assert ret == 1
+
+        data = json.loads(capsys.readouterr().out)
+        assert data["ok"] is False
+        assert len(data["results"]) == 1
+        assert data["results"][0] == {
+            "check": "body",
+            "level": "error",
+            "message": "missing body",
+        }
+
+    def test_null_sha(self, capsys):
+        r = Result()
+        ret = _report_jsonl(r, None, "fix: add thing")
+        assert ret == 0
+
+        data = json.loads(capsys.readouterr().out)
+        assert data["sha"] is None
+
+    def test_check_none_in_results(self, capsys):
+        r = Result()
+        r.error("missing required trailer: Closes")
+        _report_jsonl(r, "abc", "fix: add thing")
+
+        data = json.loads(capsys.readouterr().out)
+        assert data["results"][0]["check"] is None
+
+    def test_output_is_single_line(self, capsys):
+        r = Result()
+        _report_jsonl(r, "abc", "fix: add thing")
+        out = capsys.readouterr().out
+        assert out.count("\n") == 1
 
 
 _VALID_MSG = "fix: add thing\n\nbody text\n\nSigned-off-by: A User <a@b.com>"
@@ -1268,3 +1321,71 @@ class TestRequireTrailerIntegration:
             ),
         ):
             assert main() == 0
+
+
+class TestOutputJsonl:
+    def test_single_commit_ok(self, tmp_path, capsys):
+
+        f = tmp_path / "msg"
+        f.write_text(_VALID_MSG)
+        argv = [
+            "cg",
+            "--message-file",
+            str(f),
+            "--disable",
+            "signature,imperative",
+            "--output",
+            "jsonl",
+        ]
+        with patch("sys.argv", argv):
+            assert main() == 0
+        data = json.loads(capsys.readouterr().out)
+        assert data["ok"] is True
+        assert data["subject"] == "fix: add thing"
+        assert data["sha"] is None
+
+    def test_single_commit_fail(self, tmp_path, capsys):
+
+        f = tmp_path / "msg"
+        f.write_text("fix: add thing")
+        argv = [
+            "cg",
+            "--message-file",
+            str(f),
+            "--disable",
+            "signature,imperative",
+            "--output",
+            "jsonl",
+        ]
+        with patch("sys.argv", argv):
+            assert main() == 1
+        data = json.loads(capsys.readouterr().out)
+        assert data["ok"] is False
+        assert any(r["check"] == "body" for r in data["results"])
+
+    def test_range_emits_one_line_per_commit(self, capsys):
+        revs = ["aaa", "bbb"]
+        messages = ["fix: add thing\n\nbody\n\nSigned-off-by: A <a@b.com>"] * len(revs)
+        with (
+            patch(
+                "sys.argv",
+                [
+                    "cg",
+                    "--range",
+                    "HEAD~2..HEAD",
+                    "--disable",
+                    "signature,imperative",
+                    "--output",
+                    "jsonl",
+                ],
+            ),
+            patch("git_commit_guard._get_range_revs", return_value=revs),
+            patch("git_commit_guard._get_message", side_effect=messages),
+        ):
+            assert main() == 0
+        lines = capsys.readouterr().out.strip().splitlines()
+        assert len(lines) == len(revs)
+        for line, rev in zip(lines, revs, strict=True):
+            data = json.loads(line)
+            assert data["sha"] == rev
+            assert data["ok"] is True

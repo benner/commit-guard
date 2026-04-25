@@ -1,3 +1,4 @@
+import json
 import re
 import subprocess
 import sys
@@ -51,6 +52,11 @@ class Check(StrEnum):
 
 
 ALL_CHECKS = frozenset(Check.__members__.values())
+
+
+class OutputFormat(StrEnum):
+    TEXT = "text"
+    JSONL = "jsonl"
 
 
 def _load_config(start=None):
@@ -279,6 +285,7 @@ class Args:
     allow_empty: bool
     include_merges: bool
     required_trailers: list
+    output: OutputFormat
 
 
 def _resolve_enabled(args, config, parser):
@@ -422,6 +429,12 @@ def _parse_args():
         default=False,
         help="include merge commits when checking a range (default: excluded)",
     )
+    parser.add_argument(
+        "--output",
+        choices=[f.value for f in OutputFormat],
+        default=OutputFormat.TEXT,
+        help="output format: text (default) or jsonl",
+    )
     args = parser.parse_args()
     config = _load_config()
     enabled = _resolve_enabled(args, config, parser)
@@ -467,7 +480,22 @@ def _parse_args():
         allow_empty=args.allow_empty,
         include_merges=args.include_merges,
         required_trailers=required_trailers,
+        output=OutputFormat(args.output),
     )
+
+
+def _report_jsonl(result, sha, subject):
+    record = {
+        "sha": sha,
+        "subject": subject,
+        "ok": result.ok,
+        "results": [
+            {"check": check, "level": str(level), "message": msg}
+            for check, level, msg in result.errors
+        ],
+    }
+    sys.stdout.write(json.dumps(record) + "\n")
+    return 0 if result.ok else 1
 
 
 def _report_text(result):
@@ -521,13 +549,21 @@ def main():
         failed = False
         for rev in revs:
             message = _strip_comments(_get_message(rev))
-            sys.stderr.write(f"{rev[:7]} {message.split('\n')[0]}\n")
+            subject = message.split("\n")[0]
             result = Result()
             _run_checks(args, rev, message, result)
-            if _report_text(result) != 0:
-                failed = True
+            if args.output == OutputFormat.JSONL:
+                if _report_jsonl(result, rev, subject) != 0:
+                    failed = True
+            else:
+                sys.stderr.write(f"{rev[:7]} {subject}\n")
+                if _report_text(result) != 0:
+                    failed = True
         return 1 if failed else 0
 
+    subject = args.message.split("\n")[0]
     result = Result()
     _run_checks(args, args.rev, args.message, result)
+    if args.output == OutputFormat.JSONL:
+        return _report_jsonl(result, args.rev, subject)
     return _report_text(result)
