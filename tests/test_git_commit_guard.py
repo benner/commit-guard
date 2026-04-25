@@ -521,7 +521,7 @@ class TestLoadConfig:
 class TestParseConfigChecks:
     def test_disable_list(self):
         checks = _parse_config_checks({"disable": ["signature", "body"]}, "disable")
-        assert len(checks) == 2  # noqa: PLR2004
+        assert len(checks) == 2
 
     def test_missing_key_returns_empty(self):
         assert _parse_config_checks({}, "disable") == []
@@ -538,19 +538,19 @@ class TestResolveMaxSubjectLength:
 
     def test_cli_flag_overrides_default(self):
         result = _resolve_max_subject_length(Namespace(max_subject_length=50), {})
-        assert result == 50  # noqa: PLR2004 Magic value used in comparison, consider replacing 50 with a constant variable
+        assert result == 50
 
     def test_config_overrides_default(self):
         result = _resolve_max_subject_length(
             Namespace(max_subject_length=None), {"max-subject-length": 60}
         )
-        assert result == 60  # noqa: PLR2004 Magic value used in comparison, consider replacing 60 with a constant variable
+        assert result == 60
 
     def test_cli_overrides_config(self):
         result = _resolve_max_subject_length(
             Namespace(max_subject_length=50), {"max-subject-length": 60}
         )
-        assert result == 50  # noqa: PLR2004 Magic value used in comparison, consider replacing 50 with a constant variable
+        assert result == 50
 
 
 class TestResolveMinDescriptionLength:
@@ -564,19 +564,19 @@ class TestResolveMinDescriptionLength:
         result = _resolve_min_description_length(
             Namespace(min_description_length=10), {}
         )
-        assert result == 10  # noqa: PLR2004 Magic value used in comparison, consider replacing 10 with a constant variable
+        assert result == 10
 
     def test_config_overrides_default(self):
         result = _resolve_min_description_length(
             Namespace(min_description_length=None), {"min-description-length": 8}
         )
-        assert result == 8  # noqa: PLR2004 Magic value used in comparison, consider replacing 8 with a constant variable
+        assert result == 8
 
     def test_cli_overrides_config(self):
         result = _resolve_min_description_length(
             Namespace(min_description_length=10), {"min-description-length": 8}
         )
-        assert result == 10  # noqa: PLR2004 Magic value used in comparison, consider replacing 10 with a constant variable
+        assert result == 10
 
 
 class TestResolveTypes:

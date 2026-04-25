@@ -10,4 +10,7 @@ ignore = [
 ]
 
 [lint.per-file-ignores]
-"tests/**" = ["S101"]  # assert is expected in tests
+"tests/**" = [
+    "S101",    # assert is expected in tests
+    "PLR2004", # magic values are fine in test assertions
+]
