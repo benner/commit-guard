@@ -22,7 +22,7 @@ jobs:
           key: nltk-averaged-perceptron-tagger-punkt
       - name: Lint commits
         # yamllint disable-line rule:line-length
-        uses: benner/commit-guard@0f2660f0b4d0ea25b8524acfb459a35e544252cb  # v0.13.0
+        uses: benner/commit-guard@ccb4e549f589787e294199688f20b5cb5fcac1e1  # v0.14.0
         with:
           range: origin/${{ github.base_ref }}..HEAD
           disable: signature
