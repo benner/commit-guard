@@ -470,7 +470,7 @@ def _parse_args():
     )
 
 
-def _report(result):
+def _report_text(result):
     for check, level, msg in result.errors:
         prefix = f"[{check}] " if check else ""
         sys.stderr.write(f"  {PREFIXES[level]} {prefix}{msg}\n")
@@ -524,10 +524,10 @@ def main():
             sys.stderr.write(f"{rev[:7]} {message.split('\n')[0]}\n")
             result = Result()
             _run_checks(args, rev, message, result)
-            if _report(result) != 0:
+            if _report_text(result) != 0:
                 failed = True
         return 1 if failed else 0
 
     result = Result()
     _run_checks(args, args.rev, args.message, result)
-    return _report(result)
+    return _report_text(result)

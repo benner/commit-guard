@@ -15,7 +15,7 @@ from git_commit_guard import (
     _load_config,
     _parse_checks,
     _parse_config_checks,
-    _report,
+    _report_text,
     _resolve_max_subject_length,
     _resolve_min_description_length,
     _resolve_required_trailers,
@@ -604,21 +604,21 @@ class TestParseChecks:
 class TestReport:
     def test_all_passed(self, capsys):
         r = Result()
-        ret = _report(r)
+        ret = _report_text(r)
         assert ret == 0
         assert "all checks passed" in capsys.readouterr().err
 
     def test_with_error(self, capsys):
         r = Result()
         r.error("something broke")
-        ret = _report(r)
+        ret = _report_text(r)
         assert ret == 1
         assert "something broke" in capsys.readouterr().err
 
     def test_with_warning_returns_zero(self, capsys):
         r = Result()
         r.warn("heads up")
-        ret = _report(r)
+        ret = _report_text(r)
         assert ret == 0
         captured = capsys.readouterr().err
         assert "heads up" in captured
