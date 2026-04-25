@@ -173,6 +173,26 @@ CLI flags (`--enable`, `--disable`, `--scopes`, `--require-scope`, `--types`,
 `--max-subject-length`, `--min-description-length`, `--require-trailer`) take
 full precedence and ignore config file values when provided.
 
+### Environment variables
+
+| Variable                   | Default | Description                                  |
+| -------------------------- | ------- | -------------------------------------------- |
+| `COMMIT_GUARD_GIT_TIMEOUT` | `10`    | Timeout in seconds for git subprocess calls. |
+
+```bash
+COMMIT_GUARD_GIT_TIMEOUT=30 commit-guard --range origin/main..HEAD
+```
+
+In GitHub Actions, set it at the step or job level:
+
+```yaml
+- uses: benner/commit-guard@v0.14.1
+  env:
+    COMMIT_GUARD_GIT_TIMEOUT: 30
+  with:
+    range: ${{ env.PR_BASE }}..${{ env.PR_HEAD }}
+```
+
 ### Checking a range of commits
 
 Use `--range` to check all commits in a revision range. All commits are

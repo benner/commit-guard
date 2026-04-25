@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from git_commit_guard import (
+    GIT_TIMEOUT,
     MAX_SUBJECT_LEN,
     TYPES,
     Result,
@@ -13,6 +14,7 @@ from git_commit_guard import (
     _ensure_nltk_data,
     _get_message,
     _get_range_revs,
+    _git_timeout,
     _load_config,
     _parse_checks,
     _parse_config_checks,
@@ -577,6 +579,16 @@ class TestResolveMinDescriptionLength:
             Namespace(min_description_length=10), {"min-description-length": 8}
         )
         assert result == 10
+
+
+class TestGitTimeout:
+    def test_default(self, monkeypatch):
+        monkeypatch.delenv("COMMIT_GUARD_GIT_TIMEOUT", raising=False)
+        assert _git_timeout() == GIT_TIMEOUT
+
+    def test_env_var(self, monkeypatch):
+        monkeypatch.setenv("COMMIT_GUARD_GIT_TIMEOUT", "30")
+        assert _git_timeout() == 30
 
 
 class TestResolveTypes:
