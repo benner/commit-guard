@@ -203,6 +203,33 @@ misconfigured range specs in CI. Use `--allow-empty` to exit 0 instead:
 commit-guard --range origin/main..HEAD --allow-empty
 ```
 
+### Machine-readable output
+
+Use `--output jsonl` to emit one JSON line per commit to stdout instead of the
+default human-readable text on stderr:
+
+```bash
+commit-guard --range origin/main..HEAD --output jsonl
+```
+
+Each line is a JSON object:
+
+```json
+{
+  "sha": "abc1234...",
+  "subject": "feat: add thing",
+  "ok": false,
+  "results": [{"check": "body", "level": "error", "message": "missing body"}]
+}
+```
+
+`sha` is `null` when reading from a file or stdin. `results` is empty when all
+checks pass. Pipe to `jq` for filtering:
+
+```bash
+commit-guard --range origin/main..HEAD --output jsonl | jq 'select(.ok == false)'
+```
+
 ### GitHub Actions
 
 ```yaml
