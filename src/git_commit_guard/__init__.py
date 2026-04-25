@@ -1,4 +1,5 @@
 import json
+import os
 import re
 import subprocess
 import sys
@@ -41,6 +42,10 @@ SIGNED_OFF_RE = re.compile(
 
 MAX_SUBJECT_LEN = 72
 GIT_TIMEOUT = 10
+
+
+def _git_timeout():
+    return int(os.environ.get("COMMIT_GUARD_GIT_TIMEOUT", GIT_TIMEOUT))
 
 
 class Check(StrEnum):
@@ -228,7 +233,7 @@ def check_signature(rev, result):
         capture_output=True,
         text=True,
         check=False,
-        timeout=GIT_TIMEOUT,
+        timeout=_git_timeout(),
     )
     if proc.returncode != 0:
         result.error("commit is not signed (GPG/SSH)", check=Check.SIGNATURE)
@@ -245,7 +250,7 @@ def _get_message(rev):
             ["git", "log", "-1", "--format=%B", rev],  # noqa: S607
             text=True,
             stderr=subprocess.PIPE,
-            timeout=GIT_TIMEOUT,
+            timeout=_git_timeout(),
         ).strip()
     except subprocess.CalledProcessError as e:
         stderr = e.stderr.strip()
@@ -264,7 +269,7 @@ def _get_range_revs(rev_range, *, include_merges=False):
             cmd,
             text=True,
             stderr=subprocess.PIPE,
-            timeout=GIT_TIMEOUT,
+            timeout=_git_timeout(),
         ).strip()
     except subprocess.CalledProcessError as e:
         sys.exit(f"git error: {e.stderr.strip()}")
