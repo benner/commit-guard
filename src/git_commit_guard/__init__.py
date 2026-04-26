@@ -499,17 +499,17 @@ def _report_jsonl(result, sha, subject):
             for check, level, msg in result.errors
         ],
     }
-    sys.stdout.write(json.dumps(record) + "\n")
+    print(json.dumps(record))
     return 0 if result.ok else 1
 
 
 def _report_text(result):
     for check, level, msg in result.errors:
         prefix = f"[{check}] " if check else ""
-        sys.stderr.write(f"  {PREFIXES[level]} {prefix}{msg}\n")
+        print(f"  {PREFIXES[level]} {prefix}{msg}")
 
     if result.ok:
-        sys.stderr.write("  \033[32m✓\033[0m all checks passed\n")
+        print("  \033[32m✓\033[0m all checks passed")
 
     return 0 if result.ok else 1
 
@@ -561,7 +561,7 @@ def main():
                 if _report_jsonl(result, rev, subject) != 0:
                     failed = True
             else:
-                sys.stderr.write(f"{rev[:7]} {subject}\n")
+                print(f"{rev[:7]} {subject}")
                 if _report_text(result) != 0:
                     failed = True
         return 1 if failed else 0

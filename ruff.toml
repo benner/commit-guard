@@ -7,6 +7,7 @@ ignore = [
     "COM812", # missing-trailing-comma
     "D",      # pydocstyle (D)
     "RET504", # Unnecessary assignment to X before `return` statement
+    "T201",   # print is the intended output mechanism for this CLI
 ]
 
 [lint.per-file-ignores]

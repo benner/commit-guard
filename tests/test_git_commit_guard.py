@@ -620,21 +620,21 @@ class TestReport:
         r = Result()
         ret = _report_text(r)
         assert ret == 0
-        assert "all checks passed" in capsys.readouterr().err
+        assert "all checks passed" in capsys.readouterr().out
 
     def test_with_error(self, capsys):
         r = Result()
         r.error("something broke")
         ret = _report_text(r)
         assert ret == 1
-        assert "something broke" in capsys.readouterr().err
+        assert "something broke" in capsys.readouterr().out
 
     def test_with_warning_returns_zero(self, capsys):
         r = Result()
         r.warn("heads up")
         ret = _report_text(r)
         assert ret == 0
-        captured = capsys.readouterr().err
+        captured = capsys.readouterr().out
         assert "heads up" in captured
         assert "all checks passed" in captured
 
@@ -702,7 +702,7 @@ class TestMain:
             ["cg", "--message-file", str(f), "--disable", "signature"],
         ):
             assert main() == 0
-        assert "all checks passed" in capsys.readouterr().err
+        assert "all checks passed" in capsys.readouterr().out
 
     def test_from_stdin(self):
         stdin = MagicMock()
@@ -761,7 +761,7 @@ class TestMain:
         ):
             ret = main()
         assert ret == 0
-        assert "all checks passed" in capsys.readouterr().err
+        assert "all checks passed" in capsys.readouterr().out
 
     def test_imperative_only_no_subject_check(self, tmp_path):
         # imperative enabled, subject not — desc starts as None, parsed from line
