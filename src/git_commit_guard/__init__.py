@@ -85,12 +85,14 @@ class Level(StrEnum):
     ERROR = "error"
     WARN = "warn"
     INFO = "info"
+    OK = "ok"
 
 
 PREFIXES = {
     Level.ERROR: "\033[31m✗\033[0m",
     Level.WARN: "\033[33m⚠\033[0m",
     Level.INFO: "\033[34mi\033[0m",
+    Level.OK: "\033[32m✓\033[0m",
 }
 
 
@@ -509,7 +511,7 @@ def _report_text(result):
         print(f"  {PREFIXES[level]} {prefix}{msg}")
 
     if result.ok:
-        print("  \033[32m✓\033[0m all checks passed")
+        print(f"  {PREFIXES[Level.OK]} all checks passed")
 
     return 0 if result.ok else 1
 
