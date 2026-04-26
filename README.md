@@ -186,7 +186,7 @@ COMMIT_GUARD_GIT_TIMEOUT=30 commit-guard --range origin/main..HEAD
 In GitHub Actions, set it at the step or job level:
 
 ```yaml
-- uses: benner/commit-guard@v0.14.1
+- uses: benner/commit-guard@v0.15.0
   env:
     COMMIT_GUARD_GIT_TIMEOUT: 30
   with:
@@ -266,7 +266,7 @@ steps:
   - uses: actions/checkout@v4
     with:
       fetch-depth: 0
-  - uses: benner/commit-guard@v0.14.1
+  - uses: benner/commit-guard@v0.15.0
 ```
 
 Check all commits in a pull request:
@@ -282,7 +282,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: benner/commit-guard@v0.14.1
+      - uses: benner/commit-guard@v0.15.0
         with:
           range: ${{ env.PR_BASE }}..${{ env.PR_HEAD }}
 ```
@@ -300,7 +300,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: benner/commit-guard@v0.14.1
+      - uses: benner/commit-guard@v0.15.0
         with:
           range: ${{ env.PR_BASE }}..${{ env.PR_HEAD }}
           disable: signed-off,signature
@@ -315,7 +315,7 @@ jobs:
 When `output-file` is set the action exposes the path as an output:
 
 ```yaml
-      - uses: benner/commit-guard@v0.14.1
+      - uses: benner/commit-guard@v0.15.0
         id: cg
         with:
           range: ${{ env.PR_BASE }}..${{ env.PR_HEAD }}
@@ -331,7 +331,7 @@ Add to your `.pre-commit-config.yaml`:
 ---
 repos:
   - repo: https://github.com/benner/commit-guard
-    rev: v0.14.1
+    rev: v0.15.0
     hooks:
       - id: commit-guard
       - id: commit-guard-signature
