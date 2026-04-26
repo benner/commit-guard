@@ -518,12 +518,13 @@ def _report_jsonl(result, sha, subject):
 
 
 def _report_text(result):
+    color = sys.stdout.isatty()
     for check, level, msg in result.errors:
         prefix = f"[{check}] " if check else ""
-        print(f"  {_prefix(level)} {prefix}{msg}")
+        print(f"  {_prefix(level, color=color)} {prefix}{msg}")
 
     if result.ok:
-        print(f"  {_prefix(Level.OK)} all checks passed")
+        print(f"  {_prefix(Level.OK, color=color)} all checks passed")
 
     return 0 if result.ok else 1
 
