@@ -225,7 +225,7 @@ commit-guard --range origin/main..HEAD --allow-empty
 ### Machine-readable output
 
 Use `--output jsonl` to emit one JSON line per commit to stdout instead of the
-default human-readable text on stderr:
+default human-readable text:
 
 ```bash
 commit-guard --range origin/main..HEAD --output jsonl
