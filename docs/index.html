@@ -1,0 +1,612 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Conventional commit linting with imperative mood detection. Enforces type, scope, body, trailers and GPG/SSH signatures."
+    />
+    <title>commit-guard</title>
+    <link rel="icon" type="image/svg+xml" href="commit-guard-icon.svg" />
+    <noscript><style>.hero-dots { display: none; }</style></noscript>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/@picocss/pico@2.1.1/css/pico.min.css"
+      integrity="sha384-L1dWfspMTHU/ApYnFiMz2QID/PlP1xCW9visvBdbEkOLkSSWsP6ZJWhPw6apiXxU"
+      crossorigin="anonymous"
+    />
+    <link
+      rel="stylesheet"
+      media="(prefers-color-scheme: light)"
+      href="https://cdn.jsdelivr.net/npm/prismjs@1.30.0/themes/prism.min.css"
+      integrity="sha384-rCCjoCPCsizaAAYVoz1Q0CmCTvnctK0JkfCSjx7IIxexTBg+uCKtFYycedUjMyA2"
+      crossorigin="anonymous"
+    />
+    <link
+      rel="stylesheet"
+      media="(prefers-color-scheme: dark)"
+      href="https://cdn.jsdelivr.net/npm/prismjs@1.30.0/themes/prism-tomorrow.min.css"
+      integrity="sha384-wFjoQjtV1y5jVHbt0p35Ui8aV8GVpEZkyF99OXWqP/eNJDU93D3Ugxkoyh6Y2I4A"
+      crossorigin="anonymous"
+    />
+    <style>
+      :root {
+        --pico-font-size: 16px;
+        --nav-height: 3.75rem;
+      }
+      html {
+        scroll-padding-top: var(--nav-height);
+      }
+      @media (prefers-reduced-motion: no-preference) {
+        html { scroll-behavior: smooth; }
+      }
+      body > header,
+      body > main,
+      body > footer {
+        max-width: 860px;
+        margin-inline: auto;
+        padding-inline: 1rem;
+      }
+      body > header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        height: var(--nav-height);
+        padding-inline: 1rem;
+        border-bottom: 1px solid var(--pico-muted-border-color);
+        position: sticky;
+        top: 0;
+        background: var(--pico-background-color);
+        z-index: 10;
+      }
+      body > header a {
+        text-decoration: none;
+      }
+      header strong {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4em;
+      }
+      header nav {
+        font-size: 1.05rem;
+      }
+      header nav a {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3em;
+      }
+      @media (max-width: 768px) {
+        .nav-label { display: none; }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .cursor { animation: none; opacity: 1; }
+        .hero-terminal { transition: none; }
+      }
+      @keyframes nav-pulse {
+        0%   { transform: scale(1); }
+        35%  { transform: scale(0.82); }
+        100% { transform: scale(1); }
+      }
+      .nav-pulse {
+        animation: nav-pulse 0.22s ease-out;
+      }
+      .hero {
+        padding-block: 3rem 2rem;
+        text-align: center;
+      }
+      .hero h1 {
+        font-size: 2.5rem;
+        margin-bottom: 0.5rem;
+      }
+      .hero p {
+        font-size: 1.125rem;
+        color: var(--pico-muted-color);
+        margin-bottom: 2rem;
+      }
+      .hero-terminal {
+        display: inline-block;
+        text-align: left;
+        transition: opacity 0.4s;
+      }
+      .hero-terminal.fade-out {
+        opacity: 0;
+      }
+      .hero-terminal pre {
+        margin: 0;
+        font-size: 0.95rem;
+        width: 64ch;
+        height: 12em;
+        overflow: hidden;
+      }
+      .cursor {
+        display: inline-block;
+        width: 0.55em;
+        height: 1em;
+        background: currentColor;
+        vertical-align: text-bottom;
+        animation: blink 1s step-end infinite;
+      }
+      @keyframes blink {
+        0%, 100% { opacity: 1; }
+        50%       { opacity: 0; }
+      }
+      .c-red   { color: #e05c5c; }
+      .c-green { color: #4caf72; }
+      .c-dim   { color: var(--pico-muted-color); }
+      .hero-dots {
+        display: flex;
+        justify-content: center;
+        gap: 0.6rem;
+        margin-top: 1rem;
+      }
+      .hero-dot {
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        background: var(--pico-muted-color);
+        opacity: 0.35;
+        cursor: pointer;
+        border: none;
+        padding: 0;
+        transition: opacity 0.2s;
+      }
+      .hero-dot.active {
+        opacity: 1;
+        background: var(--pico-primary);
+      }
+      .install-tabs {
+        margin-bottom: 0.5rem;
+      }
+      .tab-bar {
+        display: flex;
+        border-bottom: 1px solid var(--pico-muted-border-color);
+      }
+      .tab-btn {
+        background: none;
+        border: none;
+        border-bottom: 2px solid transparent;
+        padding: 0.4rem 1rem;
+        margin-bottom: -1px;
+        cursor: pointer;
+        color: var(--pico-muted-color);
+        font-size: 0.875rem;
+        font-family: inherit;
+        transition: color 0.15s, border-color 0.15s;
+      }
+      .tab-btn.active {
+        color: var(--pico-primary);
+        border-bottom-color: var(--pico-primary);
+      }
+      .tab-btn:hover:not(.active) {
+        color: var(--pico-color);
+      }
+      .install-cmd {
+        display: block;
+        position: relative;
+        padding: 0.5rem 4rem 0.5rem 2rem;
+        background: var(--pico-code-background-color);
+        border-radius: var(--pico-border-radius);
+        font-size: 0.875rem;
+        margin-top: 0.5rem;
+      }
+      .install-cmd::before {
+        content: "$";
+        position: absolute;
+        left: 0.75rem;
+        color: var(--pico-muted-color);
+        user-select: none;
+        pointer-events: none;
+      }
+      .copy-btn {
+        position: absolute;
+        right: 0.5rem;
+        top: 50%;
+        transform: translateY(-50%);
+        background: none;
+        border: 1px solid var(--pico-muted-border-color);
+        cursor: pointer;
+        color: var(--pico-muted-color);
+        padding: 0.2rem;
+        line-height: 0;
+        border-radius: var(--pico-border-radius);
+        opacity: 0;
+        transition: opacity 0.15s, color 0.15s, border-color 0.15s;
+      }
+      .install-cmd:hover .copy-btn,
+      .copy-btn:focus {
+        opacity: 1;
+      }
+      .copy-btn.copied {
+        color: #4caf72;
+        border-color: #4caf72;
+      }
+      main pre {
+        position: relative;
+      }
+      main pre .copy-btn {
+        top: 0.5rem;
+        transform: none;
+      }
+      main pre:hover .copy-btn {
+        opacity: 1;
+      }
+      pre code {
+        font-size: 0.875rem;
+      }
+      h2 .anchor {
+        opacity: 0;
+        margin-left: 0.4em;
+        font-size: 0.75em;
+        color: var(--pico-muted-color);
+        text-decoration: none;
+        transition: opacity 0.15s;
+        vertical-align: middle;
+      }
+      h2:hover .anchor {
+        opacity: 1;
+      }
+      body > footer {
+        padding-block: 2rem;
+        border-top: 1px solid var(--pico-muted-border-color);
+        text-align: center;
+        color: var(--pico-muted-color);
+        font-size: 0.875rem;
+      }
+      body > footer a {
+        color: inherit;
+      }
+      @media (prefers-color-scheme: light) {
+        .hero-terminal pre,
+        .install-cmd,
+        main pre {
+          background: #dde1e6;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <a href="#"><strong><img src="commit-guard-icon.svg" width="28" height="28" alt="" aria-hidden="true" />commit-guard</strong></a>
+      <nav>
+        <ul>
+          <li><a href="#install" title="Install"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg><span class="nav-label">Install</span></a></li>
+          <li><a href="#quick-start" title="Quick start"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg><span class="nav-label">Quick start</span></a></li>
+          <li><a href="#configuration" title="Configuration"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="4" y1="6" x2="20" y2="6"/><circle cx="8" cy="6" r="2"/><line x1="4" y1="12" x2="20" y2="12"/><circle cx="16" cy="12" r="2"/><line x1="4" y1="18" x2="20" y2="18"/><circle cx="10" cy="18" r="2"/></svg><span class="nav-label">Configuration</span></a></li>
+          <li><a href="#github-actions" title="GitHub Actions"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg><span class="nav-label">GitHub Actions</span></a></li>
+          <li><a href="#pre-commit" title="pre-commit"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg><span class="nav-label">pre-commit</span></a></li>
+          <li>
+            <a href="https://github.com/benner/commit-guard" aria-label="GitHub">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61-.546-1.385-1.335-1.755-1.335-1.755-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 21.795 24 17.295 24 12c0-6.63-5.37-12-12-12z"/>
+              </svg>
+            </a>
+          </li>
+        </ul>
+      </nav>
+    </header>
+
+    <main>
+      <section class="hero">
+        <h1>commit-guard</h1>
+        <p>Conventional commit linting with imperative mood detection.</p>
+        <div class="hero-terminal">
+          <pre><code id="hero-code">$ commit-guard --range origin/main..HEAD
+<span class="c-dim">abc1234</span> feat: add user authentication
+  <span class="c-green">✓</span> all checks passed
+<span class="c-dim">def5678</span> wip: still working
+  <span class="c-red">✗</span> <span class="c-dim">[subject]</span> unknown type: wip
+  <span class="c-red">✗</span> <span class="c-dim">[body]</span> missing body</code></pre>
+        </div>
+        <div class="hero-dots">
+          <button class="hero-dot" data-i="0"></button>
+          <button class="hero-dot" data-i="1"></button>
+          <button class="hero-dot" data-i="2"></button>
+        </div>
+      </section>
+
+      <section id="install">
+        <h2>Install <a href="#install" class="anchor">#</a></h2>
+        <div class="install-tabs">
+          <div class="tab-bar">
+            <button class="tab-btn active" data-tab="0">uv</button>
+            <button class="tab-btn" data-tab="1">pipx</button>
+            <button class="tab-btn" data-tab="2">pip</button>
+          </div>
+          <code class="install-cmd">uv tool install git-commit-guard</code>
+          <code class="install-cmd" hidden>pipx install git-commit-guard</code>
+          <code class="install-cmd" hidden>pip install git-commit-guard</code>
+        </div>
+        <p>Or via <a href="#pre-commit">pre-commit</a>.</p>
+      </section>
+
+      <section id="quick-start">
+        <h2>Quick start <a href="#quick-start" class="anchor">#</a></h2>
+        <pre><code># check HEAD
+$ commit-guard
+
+# check a specific commit
+$ commit-guard abc1234
+
+# check all commits in a PR range
+$ commit-guard --range origin/main..HEAD
+
+# read from a file (for git hooks)
+$ commit-guard --message-file .git/COMMIT_EDITMSG</code></pre>
+
+        <h3>Checks</h3>
+        <p>
+          All checks run by default. Enable or disable individually with
+          <code>--enable</code> / <code>--disable</code>:
+        </p>
+        <figure>
+          <table>
+            <thead>
+              <tr>
+                <th>Check</th>
+                <th>What it verifies</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>subject</code></td>
+                <td>
+                  Format matches <code>type(scope): description</code>, valid
+                  type, lowercase start, no trailing period, max 72 chars
+                </td>
+              </tr>
+              <tr>
+                <td><code>imperative</code></td>
+                <td>
+                  First word is an imperative verb — uses NLP, not just a regex
+                </td>
+              </tr>
+              <tr>
+                <td><code>body</code></td>
+                <td>Body is present after a blank line</td>
+              </tr>
+              <tr>
+                <td><code>signed-off</code></td>
+                <td><code>Signed-off-by:</code> trailer is present</td>
+              </tr>
+              <tr>
+                <td><code>signature</code></td>
+                <td>GPG or SSH signature is valid</td>
+              </tr>
+            </tbody>
+          </table>
+        </figure>
+      </section>
+
+      <section id="configuration">
+        <h2>Configuration <a href="#configuration" class="anchor">#</a></h2>
+        <p>
+          Place <code>.commit-guard.toml</code> in your project root. CLI flags
+          always take precedence over the config file.
+        </p>
+        <pre><code class="language-toml"># .commit-guard.toml
+disable = ["signature", "body"]
+scopes = ["auth", "api", "db"]
+require-scope = true
+types = ["feat", "fix", "chore", "wip"]
+max-subject-length = 100
+min-description-length = 10
+require-trailers = ["Closes", "Reviewed-by"]</code></pre>
+      </section>
+
+      <section id="github-actions">
+        <h2>GitHub Actions <a href="#github-actions" class="anchor">#</a></h2>
+        <p>Check all commits in a pull request:</p>
+        <pre><code class="language-yaml">jobs:
+  lint-commits:
+    runs-on: ubuntu-latest
+    env:
+      PR_BASE: ${{ github.event.pull_request.base.sha }}
+      PR_HEAD: ${{ github.event.pull_request.head.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: benner/commit-guard@v0.14.1
+        with:
+          range: ${{ env.PR_BASE }}..${{ env.PR_HEAD }}
+          disable: signed-off,signature</code></pre>
+
+        <p>
+          All inputs mirror the CLI flags: <code>enable</code>,
+          <code>disable</code>, <code>scopes</code>, <code>require-scope</code>,
+          <code>types</code>, <code>max-subject-length</code>,
+          <code>min-description-length</code>, <code>require-trailer</code>,
+          <code>output-file</code>.
+        </p>
+      </section>
+
+      <section id="pre-commit">
+        <h2>pre-commit <a href="#pre-commit" class="anchor">#</a></h2>
+        <p>Add to <code>.pre-commit-config.yaml</code>:</p>
+        <pre><code class="language-yaml">repos:
+  - repo: https://github.com/benner/commit-guard
+    rev: v0.14.1
+    hooks:
+      - id: commit-guard
+      - id: commit-guard-signature</code></pre>
+      </section>
+    </main>
+
+    <footer>
+      <p>
+        GPL-2.0 &middot;
+        <a href="https://github.com/benner/commit-guard">github.com/benner/commit-guard</a>
+        &middot;
+        <a href="https://pypi.org/project/git-commit-guard/">PyPI</a>
+      </p>
+    </footer>
+    <script>
+      // Each example is an array of [text, cssClass|null] segments.
+      const EXAMPLES = [
+        [
+          ["$ commit-guard\n  ", null],
+          ["✗", "c-red"], [" [subject]", "c-dim"], [" unknown type: wip\n  ", null],
+          ["✗", "c-red"], [" [body]",    "c-dim"], [" missing body\n  ", null],
+          ["✗", "c-red"], [" [imperative]", "c-dim"], [" got 'added', want imperative verb", null],
+        ],
+        [
+          ["$ commit-guard --range origin/main..HEAD\n", null],
+          ["abc1234", "c-dim"], [" feat: add user authentication\n  ", null],
+          ["✓", "c-green"], [" all checks passed\n", null],
+          ["def5678", "c-dim"], [" wip: still working\n  ", null],
+          ["✗", "c-red"], [" [subject]", "c-dim"], [" unknown type: wip\n  ", null],
+          ["✗", "c-red"], [" [body]",    "c-dim"], [" missing body", null],
+        ],
+        [
+          ["$ commit-guard\n  ", null],
+          ["✓", "c-green"], [" all checks passed", null],
+        ],
+      ];
+
+      const el = document.getElementById("hero-code");
+      const terminal = document.querySelector(".hero-terminal");
+      const dots = document.querySelectorAll(".hero-dot");
+      let index = 0;
+      let generation = 0;
+      const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+      function buildHTML(segments, count) {
+        let html = "";
+        let remaining = count;
+        for (const [text, cls] of segments) {
+          if (remaining <= 0) break;
+          const slice = text.slice(0, remaining);
+          remaining -= text.length;
+          const escaped = slice.replace(/&/g, "&amp;").replace(/</g, "&lt;");
+          html += cls ? `<span class="${cls}">${escaped}</span>` : escaped;
+        }
+        return html;
+      }
+
+      function totalChars(segments) {
+        return segments.reduce((n, [text]) => n + text.length, 0);
+      }
+
+      function updateDots() {
+        dots.forEach((d, i) => d.classList.toggle("active", i === index));
+      }
+
+      function type(segments, total, pos, done, gen) {
+        if (gen !== generation) return;
+        el.innerHTML = buildHTML(segments, pos) + '<span class="cursor"></span>';
+        if (pos < total) {
+          setTimeout(() => type(segments, total, pos + 1, done, gen), 22);
+        } else {
+          done();
+        }
+      }
+
+      function next() {
+        const gen = ++generation;
+        terminal.classList.remove("fade-out");
+        updateDots();
+        const segments = EXAMPLES[index];
+        const total = totalChars(segments);
+        if (reducedMotion) {
+          el.innerHTML = buildHTML(segments, total) + '\n$ <span class="cursor"></span>';
+          return;
+        }
+        type(segments, total, 0, () => {
+          if (gen !== generation) return;
+          el.innerHTML = buildHTML(segments, total) + '\n$ <span class="cursor"></span>';
+          setTimeout(() => {
+            if (gen !== generation) return;
+            terminal.classList.add("fade-out");
+            setTimeout(() => {
+              if (gen !== generation) return;
+              index = (index + 1) % EXAMPLES.length;
+              el.innerHTML = "";
+              next();
+            }, 450);
+          }, 2000);
+        }, gen);
+      }
+
+      dots.forEach((d) => {
+        d.addEventListener("click", () => {
+          index = parseInt(d.dataset.i);
+          el.innerHTML = "";
+          terminal.classList.remove("fade-out");
+          next();
+        });
+      });
+
+      next();
+
+      document.querySelectorAll("header nav a[href^='#']").forEach((a) => {
+        a.addEventListener("click", () => {
+          a.classList.remove("nav-pulse");
+          void a.offsetWidth;
+          a.classList.add("nav-pulse");
+          a.addEventListener("animationend", () => a.classList.remove("nav-pulse"), { once: true });
+        });
+      });
+
+      const ICON_COPY = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="2" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+      const ICON_CHECK = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>';
+
+      function makeCopyBtn(text) {
+        const btn = document.createElement("button");
+        btn.className = "copy-btn";
+        btn.innerHTML = ICON_COPY;
+        btn.setAttribute("aria-label", "Copy");
+        btn.addEventListener("click", () => {
+          const confirm = () => {
+            btn.innerHTML = ICON_CHECK;
+            btn.classList.add("copied");
+            setTimeout(() => {
+              btn.innerHTML = ICON_COPY;
+              btn.classList.remove("copied");
+            }, 2000);
+          };
+          const fallback = () => {
+            const ta = document.createElement("textarea");
+            ta.value = text;
+            ta.style.cssText = "position:fixed;opacity:0";
+            document.body.appendChild(ta);
+            ta.select();
+            try { if (document.execCommand("copy")) confirm(); } catch (_) {}
+            document.body.removeChild(ta);
+          };
+          if (!navigator.clipboard) { fallback(); return; }
+          navigator.clipboard.writeText(text).then(confirm).catch(fallback);
+        });
+        return btn;
+      }
+
+      document.querySelectorAll(".install-cmd").forEach((code) => {
+        code.appendChild(makeCopyBtn(code.textContent));
+      });
+
+      document.querySelectorAll(".tab-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const i = parseInt(btn.dataset.tab);
+          document.querySelectorAll(".tab-btn").forEach((b) => b.classList.remove("active"));
+          btn.classList.add("active");
+          document.querySelectorAll(".install-cmd").forEach((c, j) => {
+            c.hidden = j !== i;
+          });
+        });
+      });
+
+      document.querySelectorAll(
+        "#configuration pre code, #github-actions pre code, #pre-commit pre code"
+      ).forEach((code) => {
+        const text = code.innerText.trim();
+        const isConfig = code.className.includes("language-");
+        code.parentElement.appendChild(makeCopyBtn(isConfig ? text + "\n" : text));
+      });
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/prismjs@1.30.0/prism.min.js" integrity="sha384-guvyurEPUUeAKyomgXWf/3v1dYx+etnMZ0CeHWsUXSqT1sRwh4iLpr9Z+Lw631fX" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/prismjs@1.30.0/components/prism-bash.min.js" integrity="sha384-9WmlN8ABpoFSSHvBGGjhvB3E/D8UkNB9HpLJjBQFC2VSQsM1odiQDv4NbEo+7l15" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/prismjs@1.30.0/components/prism-shell-session.min.js" integrity="sha384-raX9ECXyBTKuWD16fdVhIfoW8+QYyLzhUSDstxfaJtZV1Mb5AD793Z3qh0Mj7UPf" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/prismjs@1.30.0/components/prism-yaml.min.js" integrity="sha384-AKAiycghK0jDCjD+aavMHzDkLzRR7Yzcwh3+xL/295cvyVMe+cxQfyQC8xxGGcI8" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/prismjs@1.30.0/components/prism-toml.min.js" integrity="sha384-Uh6n44GRSQeQSMIIfAjlbqojWR7F5KALTHNsspuLDrNCsXpDPRdZbJ5A42AP/cA4" crossorigin="anonymous"></script>
+  </body>
+</html>
