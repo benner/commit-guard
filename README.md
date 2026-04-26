@@ -249,6 +249,16 @@ checks pass. Pipe to `jq` for filtering:
 commit-guard --range origin/main..HEAD --output jsonl | jq 'select(.ok == false)'
 ```
 
+Use `--output-file FILE` to write JSONL to a file while keeping human-readable
+text on stdout:
+
+```bash
+commit-guard --range origin/main..HEAD --output-file results.jsonl
+```
+
+`--output-file` is independent of `--output`: combining both writes JSONL to
+both stdout and the file.
+
 ### GitHub Actions
 
 ```yaml
@@ -299,6 +309,18 @@ jobs:
           require-trailer: 'Closes,Reviewed-by'
           max-subject-length: '100'
           min-description-length: '10'
+          output-file: results.jsonl
+```
+
+When `output-file` is set the action exposes the path as an output:
+
+```yaml
+      - uses: benner/commit-guard@v0.14.1
+        id: cg
+        with:
+          range: ${{ env.PR_BASE }}..${{ env.PR_HEAD }}
+          output-file: results.jsonl
+      - run: jq 'select(.ok == false)' "${{ steps.cg.outputs.output-file }}"
 ```
 
 ### pre-commit

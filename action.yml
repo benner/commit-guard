@@ -45,6 +45,13 @@ inputs:
   require-trailer:
     description: Comma-separated list of required trailers (e.g. Closes,Reviewed-by)
     required: false
+  output-file:
+    description: Write JSONL results to this file path (text still goes to stdout)
+    required: false
+outputs:
+  output-file:
+    description: Path to the JSONL output file (set only when output-file input is provided)
+    value: ${{ steps.run.outputs.output-file }}
 runs:
   using: composite
   steps:
@@ -57,6 +64,7 @@ runs:
       run: uv tool install git-commit-guard
       shell: bash
     - name: Run commit-guard
+      id: run
       env:
         CG_REV: ${{ inputs.rev }}
         CG_RANGE: ${{ inputs.range }}
@@ -70,6 +78,7 @@ runs:
         CG_ALLOW_EMPTY: ${{ inputs.allow-empty }}
         CG_INCLUDE_MERGES: ${{ inputs.include-merges }}
         CG_REQUIRE_TRAILER: ${{ inputs.require-trailer }}
+        CG_OUTPUT_FILE: ${{ inputs.output-file }}
       run: |
         ARGS=()
         [[ -n "$CG_REV" ]] && ARGS+=("$CG_REV")
@@ -86,5 +95,7 @@ runs:
         [[ "$CG_ALLOW_EMPTY" == "true" ]] && ARGS+=(--allow-empty)
         [[ "$CG_INCLUDE_MERGES" == "true" ]] && ARGS+=(--include-merges)
         [[ -n "$CG_REQUIRE_TRAILER" ]] && ARGS+=(--require-trailer "$CG_REQUIRE_TRAILER")
+        [[ -n "$CG_OUTPUT_FILE" ]] && ARGS+=(--output-file "$CG_OUTPUT_FILE")
         commit-guard "${ARGS[@]}"
+        [[ -n "$CG_OUTPUT_FILE" ]] && echo "output-file=$CG_OUTPUT_FILE" >> "$GITHUB_OUTPUT"
       shell: bash

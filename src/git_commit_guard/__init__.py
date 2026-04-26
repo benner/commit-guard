@@ -1,3 +1,4 @@
+import contextlib
 import json
 import os
 import re
@@ -305,6 +306,7 @@ class Args:
     include_merges: bool
     required_trailers: list
     output: OutputFormat
+    output_file: Path | None
 
 
 def _resolve_enabled(args, config, parser):
@@ -454,6 +456,12 @@ def _parse_args():
         default=OutputFormat.TEXT,
         help="output format: text (default) or jsonl",
     )
+    parser.add_argument(
+        "--output-file",
+        type=Path,
+        metavar="FILE",
+        help="write JSONL results to FILE (text still goes to stdout)",
+    )
     args = parser.parse_args()
     config = _load_config()
     enabled = _resolve_enabled(args, config, parser)
@@ -500,11 +508,12 @@ def _parse_args():
         include_merges=args.include_merges,
         required_trailers=required_trailers,
         output=OutputFormat(args.output),
+        output_file=args.output_file,
     )
 
 
-def _report_jsonl(result, sha, subject):
-    record = {
+def _jsonl_record(result, sha, subject):
+    return {
         "sha": sha,
         "subject": subject,
         "ok": result.ok,
@@ -513,8 +522,15 @@ def _report_jsonl(result, sha, subject):
             for check, level, msg in result.errors
         ],
     }
-    print(json.dumps(record))
+
+
+def _report_jsonl(result, sha, subject):
+    print(json.dumps(_jsonl_record(result, sha, subject)))
     return 0 if result.ok else 1
+
+
+def _write_jsonl_record(result, sha, subject, file):
+    file.write(json.dumps(_jsonl_record(result, sha, subject)) + "\n")
 
 
 def _report_text(result):
@@ -561,29 +577,38 @@ def _run_checks(args, rev, message, result):
 def main():
     args = _parse_args()
 
-    if args.rev_range:
-        revs = _get_range_revs(args.rev_range, include_merges=args.include_merges)
-        if not revs:
-            sys.stderr.write("no commits in range\n")
-            return 0 if args.allow_empty else 1
-        failed = False
-        for rev in revs:
-            message = _strip_comments(_get_message(rev))
-            subject = message.split("\n")[0]
-            result = Result()
-            _run_checks(args, rev, message, result)
-            if args.output == OutputFormat.JSONL:
-                if _report_jsonl(result, rev, subject) != 0:
-                    failed = True
-            else:
-                print(f"{rev[:7]} {subject}")
-                if _report_text(result) != 0:
-                    failed = True
-        return 1 if failed else 0
+    with (
+        args.output_file.open("w")
+        if args.output_file
+        else contextlib.nullcontext() as out_file
+    ):
+        if args.rev_range:
+            revs = _get_range_revs(args.rev_range, include_merges=args.include_merges)
+            if not revs:
+                sys.stderr.write("no commits in range\n")
+                return 0 if args.allow_empty else 1
+            failed = False
+            for rev in revs:
+                message = _strip_comments(_get_message(rev))
+                subject = message.split("\n")[0]
+                result = Result()
+                _run_checks(args, rev, message, result)
+                if args.output == OutputFormat.JSONL:
+                    if _report_jsonl(result, rev, subject) != 0:
+                        failed = True
+                else:
+                    print(f"{rev[:7]} {subject}")
+                    if _report_text(result) != 0:
+                        failed = True
+                if out_file:
+                    _write_jsonl_record(result, rev, subject, out_file)
+            return 1 if failed else 0
 
-    subject = args.message.split("\n")[0]
-    result = Result()
-    _run_checks(args, args.rev, args.message, result)
-    if args.output == OutputFormat.JSONL:
-        return _report_jsonl(result, args.rev, subject)
-    return _report_text(result)
+        subject = args.message.split("\n")[0]
+        result = Result()
+        _run_checks(args, args.rev, args.message, result)
+        if out_file:
+            _write_jsonl_record(result, args.rev, subject, out_file)
+        if args.output == OutputFormat.JSONL:
+            return _report_jsonl(result, args.rev, subject)
+        return _report_text(result)
