@@ -89,11 +89,23 @@ class Level(StrEnum):
 
 
 PREFIXES = {
-    Level.ERROR: "\033[31m✗\033[0m",
-    Level.WARN: "\033[33m⚠\033[0m",
-    Level.INFO: "\033[34mi\033[0m",
-    Level.OK: "\033[32m✓\033[0m",
+    Level.ERROR: "✗",
+    Level.WARN: "⚠",
+    Level.INFO: "i",
+    Level.OK: "✓",
 }
+
+COLORS = {
+    Level.ERROR: "31",
+    Level.WARN: "33",
+    Level.INFO: "34",
+    Level.OK: "32",
+}
+
+
+def _prefix(level, *, color=True):
+    sym = PREFIXES[level]
+    return f"\033[{COLORS[level]}m{sym}\033[0m" if color else sym
 
 
 @dataclass
@@ -508,10 +520,10 @@ def _report_jsonl(result, sha, subject):
 def _report_text(result):
     for check, level, msg in result.errors:
         prefix = f"[{check}] " if check else ""
-        print(f"  {PREFIXES[level]} {prefix}{msg}")
+        print(f"  {_prefix(level)} {prefix}{msg}")
 
     if result.ok:
-        print(f"  {PREFIXES[Level.OK]} all checks passed")
+        print(f"  {_prefix(Level.OK)} all checks passed")
 
     return 0 if result.ok else 1
 
