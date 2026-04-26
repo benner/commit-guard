@@ -97,5 +97,7 @@ runs:
         [[ -n "$CG_REQUIRE_TRAILER" ]] && ARGS+=(--require-trailer "$CG_REQUIRE_TRAILER")
         [[ -n "$CG_OUTPUT_FILE" ]] && ARGS+=(--output-file "$CG_OUTPUT_FILE")
         commit-guard "${ARGS[@]}"
-        [[ -n "$CG_OUTPUT_FILE" ]] && echo "output-file=$CG_OUTPUT_FILE" >> "$GITHUB_OUTPUT"
+        if [[ -n "$CG_OUTPUT_FILE" ]]; then
+          echo "output-file=$CG_OUTPUT_FILE" >> "$GITHUB_OUTPUT"
+        fi
       shell: bash
