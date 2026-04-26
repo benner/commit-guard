@@ -638,6 +638,26 @@ class TestReport:
         assert "heads up" in captured
         assert "all checks passed" in captured
 
+    def test_no_ansi_when_not_tty(self, capsys):
+        r = Result()
+        r.error("something broke")
+        with patch("sys.stdout.isatty", return_value=False):
+            _report_text(r)
+        assert "\033[" not in capsys.readouterr().out
+
+    def test_ansi_when_tty(self, capsys):
+        r = Result()
+        r.error("something broke")
+        with patch("sys.stdout.isatty", return_value=True):
+            _report_text(r)
+        assert "\033[" in capsys.readouterr().out
+
+    def test_ok_no_ansi_when_not_tty(self, capsys):
+        r = Result()
+        with patch("sys.stdout.isatty", return_value=False):
+            _report_text(r)
+        assert "\033[" not in capsys.readouterr().out
+
 
 class TestReportJsonl:
     def test_ok_commit(self, capsys):
