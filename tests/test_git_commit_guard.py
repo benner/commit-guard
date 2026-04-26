@@ -1421,3 +1421,98 @@ class TestOutputJsonl:
             data = json.loads(line)
             assert data["sha"] == rev
             assert data["ok"] is True
+
+
+class TestOutputFile:
+    def test_single_commit_writes_jsonl_to_file(self, tmp_path, capsys):
+        msg_file = tmp_path / "msg"
+        msg_file.write_text(_VALID_MSG)
+        out_file = tmp_path / "results.jsonl"
+        with patch(
+            "sys.argv",
+            [
+                "cg",
+                "--message-file",
+                str(msg_file),
+                "--disable",
+                "signature,imperative",
+                "--output-file",
+                str(out_file),
+            ],
+        ):
+            assert main() == 0
+        assert "all checks passed" in capsys.readouterr().out
+        data = json.loads(out_file.read_text())
+        assert data["ok"] is True
+        assert data["subject"] == "fix: add thing"
+
+    def test_output_jsonl_and_output_file_both_written(self, tmp_path, capsys):
+        msg_file = tmp_path / "msg"
+        msg_file.write_text(_VALID_MSG)
+        out_file = tmp_path / "results.jsonl"
+        with patch(
+            "sys.argv",
+            [
+                "cg",
+                "--message-file",
+                str(msg_file),
+                "--disable",
+                "signature,imperative",
+                "--output",
+                "jsonl",
+                "--output-file",
+                str(out_file),
+            ],
+        ):
+            assert main() == 0
+        stdout_data = json.loads(capsys.readouterr().out)
+        file_data = json.loads(out_file.read_text())
+        assert stdout_data["ok"] is True
+        assert file_data["ok"] is True
+        assert stdout_data["subject"] == file_data["subject"]
+
+    def test_range_writes_one_line_per_commit(self, tmp_path):
+        revs = ["aaa", "bbb"]
+        messages = [_VALID_MSG] * len(revs)
+        out_file = tmp_path / "results.jsonl"
+        with (
+            patch(
+                "sys.argv",
+                [
+                    "cg",
+                    "--range",
+                    "HEAD~2..HEAD",
+                    "--disable",
+                    "signature,imperative",
+                    "--output-file",
+                    str(out_file),
+                ],
+            ),
+            patch("git_commit_guard._get_range_revs", return_value=revs),
+            patch("git_commit_guard._get_message", side_effect=messages),
+        ):
+            assert main() == 0
+        lines = out_file.read_text().strip().splitlines()
+        assert len(lines) == len(revs)
+        for line, rev in zip(lines, revs, strict=True):
+            assert json.loads(line)["sha"] == rev
+
+    def test_failed_commit_written_to_file(self, tmp_path):
+        msg_file = tmp_path / "msg"
+        msg_file.write_text("fix: add thing")
+        out_file = tmp_path / "results.jsonl"
+        with patch(
+            "sys.argv",
+            [
+                "cg",
+                "--message-file",
+                str(msg_file),
+                "--disable",
+                "signature,imperative",
+                "--output-file",
+                str(out_file),
+            ],
+        ):
+            assert main() == 1
+        data = json.loads(out_file.read_text())
+        assert data["ok"] is False
