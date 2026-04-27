@@ -4,6 +4,7 @@ on:  # yamllint disable-line rule:truthy
   pull_request:
 permissions:
   contents: read
+  pull-requests: write
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -24,4 +25,11 @@ jobs:
       - name: Run tests with coverage
         run: |-
           uv run --dev pytest \
-            tests/ --cov=git_commit_guard --cov-report=term-missing
+            tests/ --cov=git_commit_guard --cov-report=term-missing \
+            --cov-report=xml
+      - name: Post coverage comment
+        # yamllint disable-line rule:line-length
+        uses: MishaKav/pytest-coverage-comment@dd5b80bde6d16941f336518e92929e89069d8451  # v1.7.2
+        with:
+          pytest-xml-coverage-path: coverage.xml
+          unique-id-for-comment: coverage
