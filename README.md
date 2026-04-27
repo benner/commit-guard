@@ -259,6 +259,10 @@ commit-guard --range origin/main..HEAD --output-file results.jsonl
 `--output-file` is independent of `--output`: combining both writes JSONL to
 both stdout and the file.
 
+In GitHub Actions, `output-file` is the recommended way to get machine-readable
+results — text stays in the CI log and the file is accessible to subsequent steps
+via `steps.<id>.outputs.output-file`.
+
 ### GitHub Actions
 
 ```yaml
@@ -287,6 +291,14 @@ jobs:
           range: ${{ env.PR_BASE }}..${{ env.PR_HEAD }}
 ```
 
+Check a specific commit SHA (mirrors the positional CLI argument):
+
+```yaml
+      - uses: benner/commit-guard@v0.15.0
+        with:
+          rev: ${{ github.sha }}
+```
+
 All inputs are optional and mirror the CLI flags:
 
 ```yaml
@@ -309,6 +321,8 @@ jobs:
           require-trailer: 'Closes,Reviewed-by'
           max-subject-length: '100'
           min-description-length: '10'
+          allow-empty: 'true'
+          include-merges: 'true'
           output-file: results.jsonl
 ```
 
