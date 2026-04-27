@@ -259,6 +259,10 @@ commit-guard --range origin/main..HEAD --output-file results.jsonl
 `--output-file` is independent of `--output`: combining both writes JSONL to
 both stdout and the file.
 
+In GitHub Actions, `output-file` is the recommended way to get machine-readable
+results — text stays in the CI log and the file is accessible to subsequent steps
+via `steps.<id>.outputs.output-file`.
+
 ### GitHub Actions
 
 ```yaml
