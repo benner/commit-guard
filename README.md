@@ -309,6 +309,8 @@ jobs:
           require-trailer: 'Closes,Reviewed-by'
           max-subject-length: '100'
           min-description-length: '10'
+          allow-empty: 'true'
+          include-merges: 'true'
           output-file: results.jsonl
 ```
 
