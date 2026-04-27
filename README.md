@@ -287,6 +287,14 @@ jobs:
           range: ${{ env.PR_BASE }}..${{ env.PR_HEAD }}
 ```
 
+Check a specific commit SHA (mirrors the positional CLI argument):
+
+```yaml
+      - uses: benner/commit-guard@v0.15.0
+        with:
+          rev: ${{ github.sha }}
+```
+
 All inputs are optional and mirror the CLI flags:
 
 ```yaml
