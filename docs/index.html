@@ -416,6 +416,26 @@ require-trailers = ["Closes", "Reviewed-by"]</code></pre>
           exit 0 instead:
         </p>
         <pre><code class="language-bash">commit-guard --range origin/main..HEAD --include-merges --allow-empty</code></pre>
+
+        <h3>Environment variables</h3>
+        <figure>
+          <table>
+            <thead>
+              <tr>
+                <th>Variable</th>
+                <th>Default</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>COMMIT_GUARD_GIT_TIMEOUT</code></td>
+                <td><code>10</code></td>
+                <td>Timeout in seconds for git subprocess calls</td>
+              </tr>
+            </tbody>
+          </table>
+        </figure>
       </section>
 
       <section id="github-actions">
