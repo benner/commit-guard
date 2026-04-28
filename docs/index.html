@@ -482,13 +482,30 @@ require-trailers = ["Closes", "Reviewed-by"]</code></pre>
           range: ${{ env.PR_BASE }}..${{ env.PR_HEAD }}
           disable: signed-off,signature</code></pre>
 
+        <p>Check a specific commit SHA:</p>
+        <pre><code class="language-yaml">      - uses: benner/commit-guard@v0.14.1
+        with:
+          rev: ${{ github.sha }}</code></pre>
+
         <p>
-          All inputs mirror the CLI flags: <code>enable</code>,
-          <code>disable</code>, <code>scopes</code>, <code>require-scope</code>,
-          <code>types</code>, <code>max-subject-length</code>,
-          <code>min-description-length</code>, <code>require-trailer</code>,
-          <code>output-file</code>.
+          All inputs mirror the CLI flags: <code>rev</code>,
+          <code>range</code>, <code>enable</code>, <code>disable</code>,
+          <code>scopes</code>, <code>require-scope</code>, <code>types</code>,
+          <code>max-subject-length</code>, <code>min-description-length</code>,
+          <code>require-trailer</code>, <code>allow-empty</code>,
+          <code>include-merges</code>, <code>output-file</code>.
         </p>
+
+        <p>
+          When <code>output-file</code> is set the action exposes the path as
+          a step output, making JSONL results available to subsequent steps:
+        </p>
+        <pre><code class="language-yaml">      - uses: benner/commit-guard@v0.14.1
+        id: cg
+        with:
+          range: ${{ env.PR_BASE }}..${{ env.PR_HEAD }}
+          output-file: results.jsonl
+      - run: jq 'select(.ok == false)' "${{ steps.cg.outputs.output-file }}"</code></pre>
       </section>
 
       <section id="pre-commit">
