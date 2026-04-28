@@ -332,7 +332,10 @@ $ commit-guard abc1234
 $ commit-guard --range origin/main..HEAD
 
 # read from a file (for git hooks)
-$ commit-guard --message-file .git/COMMIT_EDITMSG</code></pre>
+$ commit-guard --message-file .git/COMMIT_EDITMSG
+
+# pipe message via stdin
+$ echo "fix(auth): add token refresh" | commit-guard</code></pre>
 
         <h3>Checks</h3>
         <p>
