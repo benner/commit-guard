@@ -332,7 +332,10 @@ $ commit-guard abc1234
 $ commit-guard --range origin/main..HEAD
 
 # read from a file (for git hooks)
-$ commit-guard --message-file .git/COMMIT_EDITMSG</code></pre>
+$ commit-guard --message-file .git/COMMIT_EDITMSG
+
+# pipe message via stdin
+$ echo "fix(auth): add token refresh" | commit-guard</code></pre>
 
         <h3>Checks</h3>
         <p>
@@ -351,8 +354,11 @@ $ commit-guard --message-file .git/COMMIT_EDITMSG</code></pre>
               <tr>
                 <td><code>subject</code></td>
                 <td>
-                  Format matches <code>type(scope): description</code>, valid
-                  type, lowercase start, no trailing period, max 72 chars
+                  <a href="https://www.conventionalcommits.org/" target="_blank" rel="noopener">Conventional Commits</a>
+                  format: valid type, lowercase start, no trailing period,
+                  max length (default 72). All limits are configurable. Use
+                  <code>!</code> before the colon for breaking changes:
+                  <code>feat!: remove endpoint</code>
                 </td>
               </tr>
               <tr>
@@ -381,8 +387,9 @@ $ commit-guard --message-file .git/COMMIT_EDITMSG</code></pre>
       <section id="configuration">
         <h2>Configuration <a href="#configuration" class="anchor">#</a></h2>
         <p>
-          Place <code>.commit-guard.toml</code> in your project root. CLI flags
-          always take precedence over the config file.
+          Place <code>.commit-guard.toml</code> in your project root or any
+          parent directory — commit-guard searches upward and uses the first
+          file found. CLI flags always take precedence.
         </p>
         <pre><code class="language-toml"># .commit-guard.toml
 disable = ["signature", "body"]
@@ -392,6 +399,69 @@ types = ["feat", "fix", "chore", "wip"]
 max-subject-length = 100
 min-description-length = 10
 require-trailers = ["Closes", "Reviewed-by"]</code></pre>
+
+        <h3>Required trailers</h3>
+        <p>
+          Require arbitrary trailers in the commit message. Accepts a
+          comma-separated list; matching is case-sensitive and requires a
+          non-empty value after the colon (e.g. <code>Closes: #42</code>):
+        </p>
+        <pre><code class="language-bash">commit-guard --require-trailer "Closes,Reviewed-by"</code></pre>
+
+        <h3>Range options</h3>
+        <p>
+          When using <code>--range</code>, merge commits are excluded by
+          default. Use <code>--include-merges</code> to check them. An empty
+          range exits non-zero by default — use <code>--allow-empty</code> to
+          exit 0 instead:
+        </p>
+        <pre><code class="language-bash">commit-guard --range origin/main..HEAD --include-merges --allow-empty</code></pre>
+
+        <h3>Environment variables</h3>
+        <figure>
+          <table>
+            <thead>
+              <tr>
+                <th>Variable</th>
+                <th>Default</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>COMMIT_GUARD_GIT_TIMEOUT</code></td>
+                <td><code>10</code></td>
+                <td>Timeout in seconds for git subprocess calls</td>
+              </tr>
+            </tbody>
+          </table>
+        </figure>
+      </section>
+
+      <section id="output">
+        <h2>Output <a href="#output" class="anchor">#</a></h2>
+        <p>
+          Use <code>--output jsonl</code> to emit one JSON line per commit to
+          stdout instead of the default human-readable text:
+        </p>
+        <pre><code class="language-bash">commit-guard --range origin/main..HEAD --output jsonl | jq 'select(.ok == false)'</code></pre>
+        <p>Each line is a JSON object:</p>
+        <pre><code>{
+  "sha": "abc1234...",
+  "subject": "feat: add thing",
+  "ok": false,
+  "results": [{"check": "body", "level": "error", "message": "missing body"}]
+}</code></pre>
+        <p>
+          <code>sha</code> is <code>null</code> when reading from a file or
+          stdin. <code>results</code> is empty when all checks pass.
+        </p>
+        <p>
+          Use <code>--output-file FILE</code> to write JSONL to a file while
+          keeping human-readable text on stdout — useful in CI where you want
+          readable logs and structured results for downstream steps:
+        </p>
+        <pre><code class="language-bash">commit-guard --range origin/main..HEAD --output-file results.jsonl</code></pre>
       </section>
 
       <section id="github-actions">
@@ -412,13 +482,30 @@ require-trailers = ["Closes", "Reviewed-by"]</code></pre>
           range: ${{ env.PR_BASE }}..${{ env.PR_HEAD }}
           disable: signed-off,signature</code></pre>
 
+        <p>Check a specific commit SHA:</p>
+        <pre><code class="language-yaml">      - uses: benner/commit-guard@v0.14.1
+        with:
+          rev: ${{ github.sha }}</code></pre>
+
         <p>
-          All inputs mirror the CLI flags: <code>enable</code>,
-          <code>disable</code>, <code>scopes</code>, <code>require-scope</code>,
-          <code>types</code>, <code>max-subject-length</code>,
-          <code>min-description-length</code>, <code>require-trailer</code>,
-          <code>output-file</code>.
+          All inputs mirror the CLI flags: <code>rev</code>,
+          <code>range</code>, <code>enable</code>, <code>disable</code>,
+          <code>scopes</code>, <code>require-scope</code>, <code>types</code>,
+          <code>max-subject-length</code>, <code>min-description-length</code>,
+          <code>require-trailer</code>, <code>allow-empty</code>,
+          <code>include-merges</code>, <code>output-file</code>.
         </p>
+
+        <p>
+          When <code>output-file</code> is set the action exposes the path as
+          a step output, making JSONL results available to subsequent steps:
+        </p>
+        <pre><code class="language-yaml">      - uses: benner/commit-guard@v0.14.1
+        id: cg
+        with:
+          range: ${{ env.PR_BASE }}..${{ env.PR_HEAD }}
+          output-file: results.jsonl
+      - run: jq 'select(.ok == false)' "${{ steps.cg.outputs.output-file }}"</code></pre>
       </section>
 
       <section id="pre-commit">
@@ -596,7 +683,7 @@ require-trailers = ["Closes", "Reviewed-by"]</code></pre>
       });
 
       document.querySelectorAll(
-        "#configuration pre code, #github-actions pre code, #pre-commit pre code"
+        "#configuration pre code, #output pre code, #github-actions pre code, #pre-commit pre code"
       ).forEach((code) => {
         const text = code.innerText.trim();
         const isConfig = code.className.includes("language-");
