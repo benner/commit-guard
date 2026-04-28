@@ -387,8 +387,9 @@ $ echo "fix(auth): add token refresh" | commit-guard</code></pre>
       <section id="configuration">
         <h2>Configuration <a href="#configuration" class="anchor">#</a></h2>
         <p>
-          Place <code>.commit-guard.toml</code> in your project root. CLI flags
-          always take precedence over the config file.
+          Place <code>.commit-guard.toml</code> in your project root or any
+          parent directory — commit-guard searches upward and uses the first
+          file found. CLI flags always take precedence.
         </p>
         <pre><code class="language-toml"># .commit-guard.toml
 disable = ["signature", "body"]
