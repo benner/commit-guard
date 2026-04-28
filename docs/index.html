@@ -438,6 +438,32 @@ require-trailers = ["Closes", "Reviewed-by"]</code></pre>
         </figure>
       </section>
 
+      <section id="output">
+        <h2>Output <a href="#output" class="anchor">#</a></h2>
+        <p>
+          Use <code>--output jsonl</code> to emit one JSON line per commit to
+          stdout instead of the default human-readable text:
+        </p>
+        <pre><code class="language-bash">commit-guard --range origin/main..HEAD --output jsonl | jq 'select(.ok == false)'</code></pre>
+        <p>Each line is a JSON object:</p>
+        <pre><code>{
+  "sha": "abc1234...",
+  "subject": "feat: add thing",
+  "ok": false,
+  "results": [{"check": "body", "level": "error", "message": "missing body"}]
+}</code></pre>
+        <p>
+          <code>sha</code> is <code>null</code> when reading from a file or
+          stdin. <code>results</code> is empty when all checks pass.
+        </p>
+        <p>
+          Use <code>--output-file FILE</code> to write JSONL to a file while
+          keeping human-readable text on stdout — useful in CI where you want
+          readable logs and structured results for downstream steps:
+        </p>
+        <pre><code class="language-bash">commit-guard --range origin/main..HEAD --output-file results.jsonl</code></pre>
+      </section>
+
       <section id="github-actions">
         <h2>GitHub Actions <a href="#github-actions" class="anchor">#</a></h2>
         <p>Check all commits in a pull request:</p>
@@ -640,7 +666,7 @@ require-trailers = ["Closes", "Reviewed-by"]</code></pre>
       });
 
       document.querySelectorAll(
-        "#configuration pre code, #github-actions pre code, #pre-commit pre code"
+        "#configuration pre code, #output pre code, #github-actions pre code, #pre-commit pre code"
       ).forEach((code) => {
         const text = code.innerText.trim();
         const isConfig = code.className.includes("language-");
