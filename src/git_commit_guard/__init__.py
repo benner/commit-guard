@@ -220,11 +220,15 @@ def check_imperative(desc, result):
 
 
 def check_body(lines, result):
-    if len(lines) < 3:  # noqa: PLR2004
+    if len(lines) == 1:
         result.error("missing body", check=Check.BODY)
         return
     if lines[1].strip():
         result.error("missing blank line between subject and body", check=Check.BODY)
+        return
+    if len(lines) == 2:  # noqa: PLR2004 Magic value used in comparison, consider replacing 2 with a constant variable
+        result.error("missing body", check=Check.BODY)
+        return
     body_lines = [ln for ln in lines[2:] if not _TRAILER_RE.match(ln)]
     if not any(ln.strip() for ln in body_lines):
         result.error("missing body", check=Check.BODY)

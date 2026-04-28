@@ -75,7 +75,7 @@ Available checks:
 * `subject` - Format matches `type(scope): description`, valid type,
     lowercase start, no trailing period, max 72 chars
 * `imperative` - First word is an imperative verb (for example `add` not `added`)
-* `body` - Body is present after a blank line
+* `body` - Blank line separates subject from body, and body is non-empty
 * `signed-off` - `Signed-off-by:` trailer exists
 * `signature` - Verify GPG or SSH signature
 
