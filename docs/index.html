@@ -354,8 +354,11 @@ $ echo "fix(auth): add token refresh" | commit-guard</code></pre>
               <tr>
                 <td><code>subject</code></td>
                 <td>
-                  Format matches <code>type(scope): description</code>, valid
-                  type, lowercase start, no trailing period, max 72 chars
+                  <a href="https://www.conventionalcommits.org/" target="_blank" rel="noopener">Conventional Commits</a>
+                  format: valid type, lowercase start, no trailing period,
+                  max length (default 72). All limits are configurable. Use
+                  <code>!</code> before the colon for breaking changes:
+                  <code>feat!: remove endpoint</code>
                 </td>
               </tr>
               <tr>
