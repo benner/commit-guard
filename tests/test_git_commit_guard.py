@@ -237,6 +237,12 @@ class TestCheckBody:
         check_body(["fix: add thing", "body text", "more"], r)
         assert not r.ok
 
+    def test_missing_blank_line_two_lines(self):
+        r = Result()
+        check_body(["fix: add thing", "body text"], r)
+        assert not r.ok
+        assert any("blank line" in msg for _, _, msg in r.errors)
+
     def test_blank_body_content(self):
         r = Result()
         check_body(["fix: add thing", "", "   "], r)
