@@ -399,6 +399,23 @@ types = ["feat", "fix", "chore", "wip"]
 max-subject-length = 100
 min-description-length = 10
 require-trailers = ["Closes", "Reviewed-by"]</code></pre>
+
+        <h3>Required trailers</h3>
+        <p>
+          Require arbitrary trailers in the commit message. Accepts a
+          comma-separated list; matching is case-sensitive and requires a
+          non-empty value after the colon (e.g. <code>Closes: #42</code>):
+        </p>
+        <pre><code class="language-bash">commit-guard --require-trailer "Closes,Reviewed-by"</code></pre>
+
+        <h3>Range options</h3>
+        <p>
+          When using <code>--range</code>, merge commits are excluded by
+          default. Use <code>--include-merges</code> to check them. An empty
+          range exits non-zero by default — use <code>--allow-empty</code> to
+          exit 0 instead:
+        </p>
+        <pre><code class="language-bash">commit-guard --range origin/main..HEAD --include-merges --allow-empty</code></pre>
       </section>
 
       <section id="github-actions">
