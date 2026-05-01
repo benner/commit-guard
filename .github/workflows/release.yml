@@ -2,8 +2,7 @@
 name: Release
 on:  # yamllint disable-line rule:truthy
   push:
-    tags:
-      - 'v*'
+    tags: [v*]
 permissions:
   contents: write
   id-token: write
