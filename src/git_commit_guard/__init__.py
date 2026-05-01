@@ -4,7 +4,10 @@ import os
 import re
 import subprocess
 import sys
+import tempfile
 import tomllib
+import urllib.error
+import urllib.request
 from argparse import ArgumentParser
 from dataclasses import dataclass, field
 from enum import StrEnum
@@ -256,21 +259,114 @@ def check_required_trailers(message, required, result):
             result.error(f"missing required trailer: {trailer}")
 
 
-def check_signature(rev, result):
-    proc = subprocess.run(  # noqa: S603
-        ["git", "verify-commit", rev],  # noqa: S607
-        capture_output=True,
+def _get_author_email(rev):
+    return subprocess.check_output(  # noqa: S603
+        ["git", "log", "-1", "--format=%ae", rev],  # noqa: S607
         text=True,
-        check=False,
+        stderr=subprocess.PIPE,
         timeout=_git_timeout(),
-    )
-    if proc.returncode != 0:
-        result.error("commit is not signed (GPG/SSH)", check=Check.SIGNATURE)
-        return
+    ).strip()
 
-    output = proc.stderr.lower()
-    sig_type = "SSH" if "ssh" in output else "GPG"
-    result.info(f"signature type: {sig_type}", check=Check.SIGNATURE)
+
+def _fetch_github_username(email):
+    url = f"https://api.github.com/search/users?q={email}+in:email"
+    req = urllib.request.Request(url, headers={"Accept": "application/vnd.github+json"})  # noqa: S310 Audit URL open for permitted schemes
+    with urllib.request.urlopen(req, timeout=_git_timeout()) as resp:  # noqa: S310 Audit URL open for permitted schemes
+        data = json.loads(resp.read())
+    items = data.get("items", [])
+    return items[0]["login"] if items else None
+
+
+def _fetch_url(url):
+    with urllib.request.urlopen(url, timeout=_git_timeout()) as resp:  # noqa: S310
+        return resp.read().decode()
+
+
+def _fetch_github_keys(username):
+    gpg = _fetch_url(f"https://github.com/{username}.gpg")
+    ssh = _fetch_url(f"https://github.com/{username}.keys")
+    return gpg.strip(), ssh.strip()
+
+
+def _verify_gpg(rev, gpg_text):
+    if not gpg_text:
+        return False
+    with tempfile.TemporaryDirectory() as homedir:
+        env = {**os.environ, "GNUPGHOME": homedir}
+        import_proc = subprocess.run(
+            ["gpg", "--batch", "--import"],  # noqa: S607
+            input=gpg_text,
+            text=True,
+            capture_output=True,
+            env=env,
+            check=False,
+        )
+        if import_proc.returncode != 0:
+            return False
+        verify_proc = subprocess.run(  # noqa: S603
+            ["git", "verify-commit", rev],  # noqa: S607
+            capture_output=True,
+            text=True,
+            env=env,
+            check=False,
+            timeout=_git_timeout(),
+        )
+        return verify_proc.returncode == 0
+
+
+def _verify_ssh(rev, email, ssh_text):
+    if not ssh_text:
+        return False
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".allowedSigners", delete=False
+    ) as f:
+        for raw_line in ssh_text.splitlines():
+            stripped = raw_line.strip()
+            if stripped:
+                f.write(f"{email} {stripped}\n")
+        signers_path = f.name
+    try:
+        proc = subprocess.run(  # noqa: S603
+            [  # noqa: S607
+                "git",
+                "-c",
+                f"gpg.ssh.allowedSignersFile={signers_path}",
+                "verify-commit",
+                rev,
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=_git_timeout(),
+        )
+        return proc.returncode == 0
+    finally:
+        Path(signers_path).unlink(missing_ok=True)
+
+
+def check_signature(rev, result):
+    try:
+        email = _get_author_email(rev)
+        username = _fetch_github_username(email)
+        if username is None:
+            result.error(
+                "commit author not found on GitHub — cannot verify signature",
+                check=Check.SIGNATURE,
+            )
+            return
+        gpg_text, ssh_text = _fetch_github_keys(username)
+        if _verify_gpg(rev, gpg_text):
+            result.info("signature type: GPG", check=Check.SIGNATURE)
+            return
+        if _verify_ssh(rev, email, ssh_text):
+            result.info("signature type: SSH", check=Check.SIGNATURE)
+            return
+        result.error("commit is not signed (GPG/SSH)", check=Check.SIGNATURE)
+    except (urllib.error.URLError, TimeoutError):
+        result.error(
+            "GitHub API unreachable — cannot verify signature",
+            check=Check.SIGNATURE,
+        )
 
 
 def _get_message(rev):

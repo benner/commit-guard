@@ -77,7 +77,8 @@ Available checks:
 * `imperative` - First word is an imperative verb (for example `add` not `added`)
 * `body` - Blank line separates subject from body, and body is non-empty
 * `signed-off` - `Signed-off-by:` trailer exists
-* `signature` - Verify GPG or SSH signature
+* `signature` - Verify GPG or SSH signature via GitHub public key lookup, with
+    fallback to `git verify-commit`
 
 ### Subject length
 
@@ -198,6 +199,23 @@ require-trailers = ["Closes", "Reviewed-by"]
 Trailer matching is case-sensitive and requires at least one non-space
 character after the colon (e.g. `Closes: #42`). This check runs
 independently of `--enable`/`--disable`.
+
+### Signature verification
+
+The `signature` check tries to verify the commit without any local keyring setup:
+
+1. Look up the commit author's email in the GitHub API to find their GitHub
+   username.
+2. Fetch their public keys from `github.com/{username}.gpg` and
+   `github.com/{username}.keys`.
+3. Try GPG verification: import the fetched key into a temporary keyring and
+   run `git verify-commit`.
+4. Try SSH verification: write a temporary `allowed_signers` file and run
+   `git verify-commit` with the SSH allowed-signers config.
+5. If any key verifies, the check passes. If none do, it fails.
+
+If the author's email is not found on GitHub, or the API is unreachable, the
+check fails with a clear error — there is no silent fallback.
 
 ### Configuration file
 
