@@ -1,6 +1,7 @@
 import json
 import re
 import subprocess
+import urllib.error
 from argparse import ArgumentParser, Namespace
 from unittest.mock import MagicMock, patch
 
@@ -13,6 +14,10 @@ from git_commit_guard import (
     Result,
     _download_if_missing,
     _ensure_nltk_data,
+    _fetch_github_keys,
+    _fetch_github_username,
+    _fetch_url,
+    _get_author_email,
     _get_message,
     _get_range_revs,
     _git_timeout,
@@ -29,6 +34,8 @@ from git_commit_guard import (
     _resolve_subject_pattern,
     _resolve_types,
     _strip_comments,
+    _verify_gpg,
+    _verify_ssh,
     check_body,
     check_imperative,
     check_required_trailers,
@@ -540,29 +547,172 @@ class TestDownloadIfMissing:
         mock_dl.assert_called_once_with("punkt_tab", quiet=True)
 
 
-class TestCheckSignature:
-    def test_unsigned_commit(self):
-        r = Result()
+class TestGetAuthorEmail:
+    def test_returns_stripped_email(self):
+        with patch(
+            "git_commit_guard.subprocess.check_output",
+            return_value="user@example.com\n",
+        ):
+            assert _get_author_email("abc123") == "user@example.com"
+
+
+class TestFetchUrl:
+    def test_returns_decoded_content(self):
+        mock_resp = MagicMock()
+        mock_resp.__enter__ = lambda s: s
+        mock_resp.__exit__ = MagicMock(return_value=False)
+        mock_resp.read.return_value = b"key data"
+        with patch("git_commit_guard.urllib.request.urlopen", return_value=mock_resp):
+            assert _fetch_url("https://github.com/user.keys") == "key data"
+
+
+class TestFetchGithubUsername:
+    def _mock_response(self, data):
+        mock_resp = MagicMock()
+        mock_resp.__enter__ = lambda s: s
+        mock_resp.__exit__ = MagicMock(return_value=False)
+        mock_resp.read.return_value = json.dumps(data).encode()
+        return mock_resp
+
+    def test_found_returns_login(self):
+        resp = self._mock_response({"items": [{"login": "testuser"}]})
+        with patch("git_commit_guard.urllib.request.urlopen", return_value=resp):
+            assert _fetch_github_username("test@example.com") == "testuser"
+
+    def test_not_found_returns_none(self):
+        resp = self._mock_response({"items": []})
+        with patch("git_commit_guard.urllib.request.urlopen", return_value=resp):
+            assert _fetch_github_username("unknown@example.com") is None
+
+
+class TestFetchGithubKeys:
+    def test_returns_gpg_and_ssh(self):
+        with patch(
+            "git_commit_guard._fetch_url", side_effect=["GPG KEY\n", "SSH KEY\n"]
+        ):
+            gpg, ssh = _fetch_github_keys("testuser")
+        assert gpg == "GPG KEY"
+        assert ssh == "SSH KEY"
+
+
+class TestVerifyGpg:
+    def test_empty_gpg_returns_false(self):
+        assert _verify_gpg("abc123", "") is False
+
+    def test_import_failure_returns_false(self):
         proc = MagicMock(returncode=1)
         with patch("git_commit_guard.subprocess.run", return_value=proc):
-            check_signature("abc123", r)
-        assert not r.ok
+            assert _verify_gpg("abc123", "gpg key data") is False
 
-    def test_gpg_signed_commit(self):
-        r = Result()
-        proc = MagicMock(returncode=0, stderr="gpg signature verified")
+    def test_verify_success_returns_true(self):
+        import_proc = MagicMock(returncode=0)
+        verify_proc = MagicMock(returncode=0)
+        with patch(
+            "git_commit_guard.subprocess.run", side_effect=[import_proc, verify_proc]
+        ):
+            assert _verify_gpg("abc123", "gpg key data") is True
+
+    def test_verify_failure_returns_false(self):
+        import_proc = MagicMock(returncode=0)
+        verify_proc = MagicMock(returncode=1)
+        with patch(
+            "git_commit_guard.subprocess.run", side_effect=[import_proc, verify_proc]
+        ):
+            assert _verify_gpg("abc123", "gpg key data") is False
+
+
+class TestVerifySSH:
+    def test_empty_ssh_returns_false(self):
+        assert _verify_ssh("abc123", "user@example.com", "") is False
+
+    def test_verify_success_returns_true(self):
+        proc = MagicMock(returncode=0)
         with patch("git_commit_guard.subprocess.run", return_value=proc):
+            assert (
+                _verify_ssh("abc123", "user@example.com", "ssh-ed25519 AAAA...") is True
+            )
+
+    def test_verify_failure_returns_false(self):
+        proc = MagicMock(returncode=1)
+        with patch("git_commit_guard.subprocess.run", return_value=proc):
+            assert (
+                _verify_ssh("abc123", "user@example.com", "ssh-ed25519 AAAA...")
+                is False
+            )
+
+
+class TestCheckSignature:
+    def test_gpg_verified_via_github(self):
+        r = Result()
+        with (
+            patch(
+                "git_commit_guard._get_author_email", return_value="user@example.com"
+            ),
+            patch("git_commit_guard._fetch_github_username", return_value="testuser"),
+            patch("git_commit_guard._fetch_github_keys", return_value=("GPG KEY", "")),
+            patch("git_commit_guard._verify_gpg", return_value=True),
+        ):
             check_signature("abc123", r)
         assert r.ok
         assert any("GPG" in msg for _, _, msg in r.errors)
 
-    def test_ssh_signed_commit(self):
+    def test_ssh_verified_via_github(self):
         r = Result()
-        proc = MagicMock(returncode=0, stderr="Good ssh signature")
-        with patch("git_commit_guard.subprocess.run", return_value=proc):
+        with (
+            patch(
+                "git_commit_guard._get_author_email", return_value="user@example.com"
+            ),
+            patch("git_commit_guard._fetch_github_username", return_value="testuser"),
+            patch("git_commit_guard._fetch_github_keys", return_value=("", "SSH KEY")),
+            patch("git_commit_guard._verify_gpg", return_value=False),
+            patch("git_commit_guard._verify_ssh", return_value=True),
+        ):
             check_signature("abc123", r)
         assert r.ok
         assert any("SSH" in msg for _, _, msg in r.errors)
+
+    def test_no_matching_key_fails(self):
+        r = Result()
+        with (
+            patch(
+                "git_commit_guard._get_author_email", return_value="user@example.com"
+            ),
+            patch("git_commit_guard._fetch_github_username", return_value="testuser"),
+            patch("git_commit_guard._fetch_github_keys", return_value=("GPG", "SSH")),
+            patch("git_commit_guard._verify_gpg", return_value=False),
+            patch("git_commit_guard._verify_ssh", return_value=False),
+        ):
+            check_signature("abc123", r)
+        assert not r.ok
+
+    def test_username_not_found_fails(self):
+        r = Result()
+        with (
+            patch(
+                "git_commit_guard._get_author_email", return_value="user@example.com"
+            ),
+            patch("git_commit_guard._fetch_github_username", return_value=None),
+        ):
+            check_signature("abc123", r)
+        assert not r.ok
+        assert any("not found on GitHub" in msg for _, _, msg in r.errors)
+
+    def test_url_error_fails(self):
+        r = Result()
+        with patch(
+            "git_commit_guard._get_author_email",
+            side_effect=urllib.error.URLError("unreachable"),
+        ):
+            check_signature("abc123", r)
+        assert not r.ok
+        assert any("API unreachable" in msg for _, _, msg in r.errors)
+
+    def test_timeout_error_fails(self):
+        r = Result()
+        with patch("git_commit_guard._get_author_email", side_effect=TimeoutError()):
+            check_signature("abc123", r)
+        assert not r.ok
+        assert any("API unreachable" in msg for _, _, msg in r.errors)
 
 
 class TestGetMessage:
@@ -929,11 +1079,15 @@ class TestMain:
             assert main() == 0
 
     def test_signature_with_rev(self):
-        proc = MagicMock(returncode=0, stderr="gpg signature verified")
         with (
             patch("sys.argv", ["cg", "abc123", "--enable", "signature"]),
             patch("git_commit_guard._get_message", return_value=_VALID_MSG),
-            patch("git_commit_guard.subprocess.run", return_value=proc),
+            patch(
+                "git_commit_guard._get_author_email", return_value="user@example.com"
+            ),
+            patch("git_commit_guard._fetch_github_username", return_value="testuser"),
+            patch("git_commit_guard._fetch_github_keys", return_value=("GPG KEY", "")),
+            patch("git_commit_guard._verify_gpg", return_value=True),
         ):
             assert main() == 0
 
