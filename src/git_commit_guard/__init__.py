@@ -155,6 +155,7 @@ def check_subject(  # noqa: PLR0913 Too many arguments in function definition (7
     min_description_length=0,
     *,
     require_scope=False,
+    require_lowercase=True,
 ):
     m = SUBJECT_RE.match(line)
     if not m:
@@ -174,7 +175,7 @@ def check_subject(  # noqa: PLR0913 Too many arguments in function definition (7
         result.error(f"unknown scope: {scope}", check=Check.SUBJECT)
 
     desc = m.group("desc")
-    if desc[0].isupper():
+    if require_lowercase and desc[0].isupper():
         result.error("description must not start with uppercase", check=Check.SUBJECT)
     if desc.endswith("."):
         result.error("description must not end with period", check=Check.SUBJECT)
@@ -305,6 +306,7 @@ class Args:
     allowed_types: frozenset
     max_subject_length: int
     min_description_length: int
+    require_lowercase: bool
     rev_range: str | None
     allow_empty: bool
     include_merges: bool
@@ -343,6 +345,14 @@ def _resolve_min_description_length(args, config):
     if "min-description-length" in config:
         return config["min-description-length"]
     return 0
+
+
+def _resolve_require_lowercase(args, config):
+    if args.require_lowercase is not None:
+        return args.require_lowercase
+    if "require-lowercase" in config:
+        return config["require-lowercase"]
+    return True
 
 
 def _resolve_required_trailers(args, config):
@@ -432,6 +442,13 @@ def _parse_args():
         help="minimum description length in characters (default: 0, off)",
     )
     parser.add_argument(
+        "--no-require-lowercase",
+        dest="require_lowercase",
+        action="store_false",
+        default=None,
+        help="allow description to start with uppercase (default: disallowed)",
+    )
+    parser.add_argument(
         "--range",
         dest="rev_range",
         metavar="REF..REF",
@@ -473,6 +490,7 @@ def _parse_args():
     allowed_types = _resolve_types(args, config)
     max_subject_length = _resolve_max_subject_length(args, config)
     min_description_length = _resolve_min_description_length(args, config)
+    require_lowercase = _resolve_require_lowercase(args, config)
     required_trailers = _resolve_required_trailers(args, config)
 
     if args.allow_empty and not args.rev_range:
@@ -507,6 +525,7 @@ def _parse_args():
         allowed_types=allowed_types,
         max_subject_length=max_subject_length,
         min_description_length=min_description_length,
+        require_lowercase=require_lowercase,
         rev_range=args.rev_range,
         allow_empty=args.allow_empty,
         include_merges=args.include_merges,
@@ -561,6 +580,7 @@ def _run_checks(args, rev, message, result):
             args.max_subject_length,
             args.min_description_length,
             require_scope=args.require_scope,
+            require_lowercase=args.require_lowercase,
         )
     if Check.IMPERATIVE in args.enabled:
         if desc is None:

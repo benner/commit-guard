@@ -34,6 +34,10 @@ inputs:
   min-description-length:
     description: Minimum description length in characters (default 0, off)
     required: false
+  no-require-lowercase:
+    description: Allow description to start with uppercase (default false)
+    required: false
+    default: 'false'
   allow-empty:
     description: Exit 0 when --range yields no commits
     required: false
@@ -75,6 +79,7 @@ runs:
         CG_TYPES: ${{ inputs.types }}
         CG_MAX_SUBJECT_LENGTH: ${{ inputs.max-subject-length }}
         CG_MIN_DESCRIPTION_LENGTH: ${{ inputs.min-description-length }}
+        CG_NO_REQUIRE_LOWERCASE: ${{ inputs.no-require-lowercase }}
         CG_ALLOW_EMPTY: ${{ inputs.allow-empty }}
         CG_INCLUDE_MERGES: ${{ inputs.include-merges }}
         CG_REQUIRE_TRAILER: ${{ inputs.require-trailer }}
@@ -92,6 +97,7 @@ runs:
             ARGS+=(--max-subject-length "$CG_MAX_SUBJECT_LENGTH")
         [[ -n "$CG_MIN_DESCRIPTION_LENGTH" ]] && \
             ARGS+=(--min-description-length "$CG_MIN_DESCRIPTION_LENGTH")
+        [[ "$CG_NO_REQUIRE_LOWERCASE" == "true" ]] && ARGS+=(--no-require-lowercase)
         [[ "$CG_ALLOW_EMPTY" == "true" ]] && ARGS+=(--allow-empty)
         [[ "$CG_INCLUDE_MERGES" == "true" ]] && ARGS+=(--include-merges)
         [[ -n "$CG_REQUIRE_TRAILER" ]] && ARGS+=(--require-trailer "$CG_REQUIRE_TRAILER")
