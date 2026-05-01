@@ -10,6 +10,7 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
+    environment: pypi
     steps:
       - name: Checkout code
         # yamllint disable-line rule:line-length
