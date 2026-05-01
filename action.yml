@@ -39,7 +39,7 @@ inputs:
     required: false
     default: 'false'
   no-trailing-chars:
-    description: Forbidden trailing characters, comma-separated (default '.')
+    description: Forbidden trailing characters, comma-separated (default '.', '!', '?', ' ')
     required: false
   allow-empty:
     description: Exit 0 when --range yields no commits
