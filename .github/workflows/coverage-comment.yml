@@ -30,6 +30,63 @@ jobs:
             exit 1
           fi
           echo "number=$pr_number" >> "$GITHUB_OUTPUT"
+      - name: Find baseline run
+        id: baseline
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python3 - <<'PYEOF'
+          import json, os, urllib.request
+          token = os.environ['GITHUB_TOKEN']
+          repo = os.environ['GITHUB_REPOSITORY']
+          url = (
+              f'https://api.github.com/repos/{repo}/actions/workflows'
+              f'/coverage-baseline.yml/runs'
+              f'?branch=main&status=success&per_page=1'
+          )
+          req = urllib.request.Request(url, headers={
+              'Authorization': f'Bearer {token}',
+              'Accept': 'application/vnd.github+json',
+          })
+          with urllib.request.urlopen(req) as r:
+              runs = json.loads(r.read()).get('workflow_runs', [])
+          run_id = str(runs[0]['id']) if runs else ''
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+              f.write(f'run-id={run_id}\n')
+          PYEOF
+      - name: Download baseline coverage
+        if: steps.baseline.outputs.run-id != ''
+        # yamllint disable-line rule:line-length
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # ratchet:actions/download-artifact@v4
+        with:
+          run-id: ${{ steps.baseline.outputs.run-id }}
+          name: main-coverage
+          path: main/
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Compute coverage delta
+        id: delta
+        if: steps.baseline.outputs.run-id != ''
+        run: |
+          python3 - <<'PYEOF'
+          import xml.etree.ElementTree as ET
+          import os, sys
+          try:
+              pr_rate = ET.parse('coverage.xml').getroot().get('line-rate')
+              main_xml = ET.parse('main/coverage.xml').getroot()
+              main_rate = main_xml.get('line-rate')
+              pr = float(pr_rate) * 100
+              main = float(main_rate) * 100
+              delta = pr - main
+              if not (-100 <= delta <= 100):
+                  raise ValueError(f"delta out of range: {delta}")
+              sign = '+' if delta >= 0 else ''
+              title = f"Coverage Report (Δ {sign}{delta:.1f}%)"
+          except Exception as e:
+              print(f"Warning: could not compute delta: {e}", file=sys.stderr)
+              title = "Coverage Report"
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+              f.write(f"title={title}\n")
+          PYEOF
       - name: Post coverage comment
         # yamllint disable-line rule:line-length
         uses: MishaKav/pytest-coverage-comment@dd5b80bde6d16941f336518e92929e89069d8451  # ratchet:MishaKav/pytest-coverage-comment@v1.7.2
@@ -37,3 +94,4 @@ jobs:
           pytest-xml-coverage-path: coverage.xml
           unique-id-for-comment: coverage
           issue-number: ${{ steps.pr.outputs.number }}
+          title: ${{ steps.delta.outputs.title || 'Coverage Report' }}
