@@ -73,7 +73,7 @@ commit-guard --disable body,signed-off,signature
 Available checks:
 
 * `subject` - Format matches `type(scope): description`, valid type,
-    lowercase start, no trailing period, max 72 chars
+    lowercase start, no trailing `.` `!` `?` or space, max 72 chars
 * `imperative` - First word is an imperative verb (for example `add` not `added`)
 * `body` - Blank line separates subject from body, and body is non-empty
 * `signed-off` - `Signed-off-by:` trailer exists
@@ -110,8 +110,8 @@ In `.commit-guard.toml`:
 require-lowercase = false
 ```
 
-By default trailing `.` is forbidden. To change the set of forbidden trailing
-characters (any character is valid, including space):
+By default `.`, `!`, `?`, and space are forbidden as trailing characters.
+To change the set (any character is valid):
 
 ```bash
 commit-guard --no-trailing-chars ".,"

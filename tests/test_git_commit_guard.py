@@ -659,9 +659,9 @@ class TestResolveNoTrailingChars:
         )
         assert result == frozenset({".", "!"})
 
-    def test_default_is_period(self):
+    def test_default_includes_common_punctuation_and_space(self):
         result = _resolve_no_trailing_chars(Namespace(no_trailing_chars=None), {})
-        assert result == frozenset(".")
+        assert result == frozenset({".", "!", "?", " "})
 
 
 class TestGitTimeout:

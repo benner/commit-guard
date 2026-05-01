@@ -153,7 +153,7 @@ def check_subject(  # noqa: PLR0913 Too many arguments in function definition (9
     allowed_types=TYPES,
     max_subject_length=MAX_SUBJECT_LEN,
     min_description_length=0,
-    no_trailing_chars=frozenset("."),
+    no_trailing_chars=frozenset({".", "!", "?", " "}),
     *,
     require_scope=False,
     require_lowercase=True,
@@ -362,7 +362,7 @@ def _resolve_no_trailing_chars(args, config):
         return frozenset(c for c in args.no_trailing_chars.split(",") if c)
     if "no-trailing-chars" in config:
         return frozenset(config["no-trailing-chars"])
-    return frozenset(".")
+    return frozenset({".", "!", "?", " "})
 
 
 def _resolve_required_trailers(args, config):
