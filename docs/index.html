@@ -400,7 +400,23 @@ max-subject-length = 100
 min-description-length = 10
 require-lowercase = false
 no-trailing-chars = [".", "!"]
-require-trailers = ["Closes", "Reviewed-by"]</code></pre>
+require-trailers = ["Closes", "Reviewed-by"]
+require-subject-pattern = "[A-Z]+-[0-9]+"</code></pre>
+
+        <h3>Required subject pattern</h3>
+        <p>
+          Require the commit subject to match a regular expression. Useful for
+          enforcing ticket references or any custom naming convention:
+        </p>
+        <pre><code class="language-bash">commit-guard --require-subject-pattern "[A-Z]+-[0-9]+"</code></pre>
+        <p>
+          In <code>.commit-guard.toml</code>:
+        </p>
+        <pre><code class="language-toml">require-subject-pattern = "[A-Z]+-[0-9]+"</code></pre>
+        <p>
+          An invalid regex causes an immediate error at startup (exit 2). This
+          check runs independently of <code>--enable</code>/<code>--disable</code>.
+        </p>
 
         <h3>Required trailers</h3>
         <p>

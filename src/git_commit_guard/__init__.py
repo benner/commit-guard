@@ -241,6 +241,14 @@ def check_signed_off(message, result):
         result.error("missing 'Signed-off-by' trailer", check=Check.SIGNED_OFF)
 
 
+def check_subject_pattern(subject, pattern, result):
+    if not pattern.search(subject):
+        result.error(
+            f"subject must match pattern '{pattern.pattern}'",
+            check=Check.SUBJECT,
+        )
+
+
 def check_required_trailers(message, required, result):
     for trailer in required:
         pattern = re.compile(rf"^{re.escape(trailer)}:\s+\S", re.MULTILINE)
@@ -313,6 +321,7 @@ class Args:
     allow_empty: bool
     include_merges: bool
     required_trailers: list
+    subject_pattern: re.Pattern | None
     output: OutputFormat
     output_file: Path | None
 
@@ -373,6 +382,12 @@ def _resolve_required_trailers(args, config):
     return []
 
 
+def _resolve_subject_pattern(args, config):
+    if args.require_subject_pattern is not None:
+        return args.require_subject_pattern
+    return config.get("require-subject-pattern")
+
+
 def _resolve_types(args, config):
     if args.types:
         return frozenset(t.strip() for t in args.types.split(","))
@@ -406,7 +421,7 @@ def _parse_checks(parser, value):
         parser.error(str(e))
 
 
-def _parse_args():
+def _parse_args():  # noqa: PLR0915 Too many statements (59 > 50)
     checks_list = ",".join(sorted(Check))
     parser = ArgumentParser(description="conventional commit checker")
     parser.add_argument("rev", nargs="?", default=None)
@@ -477,6 +492,12 @@ def _parse_args():
         help="exit 0 when --range yields no commits (default: exit 1)",
     )
     parser.add_argument(
+        "--require-subject-pattern",
+        default=None,
+        metavar="REGEX",
+        help="require subject line to match this regular expression",
+    )
+    parser.add_argument(
         "--require-trailer",
         metavar="TRAILER[,TRAILER,...]",
         help="require these trailers in the commit message",
@@ -509,6 +530,16 @@ def _parse_args():
     require_lowercase = _resolve_require_lowercase(args, config)
     no_trailing_chars = _resolve_no_trailing_chars(args, config)
     required_trailers = _resolve_required_trailers(args, config)
+    subject_pattern_str = _resolve_subject_pattern(args, config)
+    if subject_pattern_str is not None:
+        try:
+            subject_pattern = re.compile(subject_pattern_str)
+        except re.error as e:
+            parser.error(
+                f"invalid regex for --require-subject-pattern {subject_pattern_str!r}: {e}"  # noqa: E501 Line too long
+            )
+    else:
+        subject_pattern = None
 
     if args.allow_empty and not args.rev_range:
         parser.error("--allow-empty requires --range")
@@ -548,6 +579,7 @@ def _parse_args():
         allow_empty=args.allow_empty,
         include_merges=args.include_merges,
         required_trailers=required_trailers,
+        subject_pattern=subject_pattern,
         output=OutputFormat(args.output),
         output_file=args.output_file,
     )
@@ -613,6 +645,8 @@ def _run_checks(args, rev, message, result):
         check_signed_off(message, result)
     if args.required_trailers:
         check_required_trailers(message, args.required_trailers, result)
+    if args.subject_pattern:
+        check_subject_pattern(lines[0], args.subject_pattern, result)
     if Check.SIGNATURE in args.enabled and rev:
         check_signature(rev, result)
 
