@@ -7,6 +7,7 @@ on:  # yamllint disable-line rule:truthy
 permissions:
   contents: write
   id-token: write
+  pull-requests: read
 jobs:
   release:
     runs-on: ubuntu-latest
@@ -34,6 +35,8 @@ jobs:
         id: git-cliff
         # yamllint disable-line rule:line-length
         uses: orhun/git-cliff-action@f50e11560dce63f7c33227798f90b924471a88b5  # ratchet:orhun/git-cliff-action@v4.8.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           args: --current
       - name: Create GitHub Release
