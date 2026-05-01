@@ -113,9 +113,39 @@ class TestCheckSubject:
         check_subject("fix: Add token", r)
         assert not r.ok
 
+    def test_uppercase_description_allowed(self):
+        r = Result()
+        check_subject("fix: Add token", r, require_lowercase=False)
+        assert r.ok
+
+    def test_lowercase_required_by_default(self):
+        r = Result()
+        check_subject("fix: add token", r)
+        assert r.ok
+
     def test_trailing_period(self):
         r = Result()
         check_subject("fix: add token.", r)
+        assert not r.ok
+
+    def test_trailing_char_custom(self):
+        r = Result()
+        check_subject("fix: add token!", r, no_trailing_chars=frozenset("!"))
+        assert not r.ok
+
+    def test_trailing_char_space(self):
+        r = Result()
+        check_subject("fix: add token ", r, no_trailing_chars=frozenset(". "))
+        assert not r.ok
+
+    def test_trailing_chars_empty_disables_check(self):
+        r = Result()
+        check_subject("fix: add token.", r, no_trailing_chars=frozenset())
+        assert r.ok
+
+    def test_trailing_chars_multiple(self):
+        r = Result()
+        check_subject("fix: add token!", r, no_trailing_chars=frozenset(".!"))
         assert not r.ok
 
     def test_subject_too_long(self):
