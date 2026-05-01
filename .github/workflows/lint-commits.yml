@@ -7,6 +7,8 @@ permissions:
 jobs:
   lint-commits:
     runs-on: ubuntu-latest
+    env:
+      CG_SHA: 2d845b2e0fc8fafdfd83429297756187d2016aac
     steps:
       - name: Checkout code
         # yamllint disable-line rule:line-length
@@ -20,9 +22,18 @@ jobs:
         with:
           path: ~/nltk_data
           key: nltk-averaged-perceptron-tagger-punkt
-      - name: Lint commits
+      - name: Set up uv
         # yamllint disable-line rule:line-length
-        uses: benner/commit-guard@7704c563540b24bb10394e373e508dc664a7f01f  # v0.19.0
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78  # v7.6.0
         with:
-          range: origin/${{ github.base_ref }}..HEAD
-          disable: signature
+          enable-cache: false
+      - name: Install commit-guard from branch
+        run: |-
+          REPO=https://github.com/benner/commit-guard.git
+          uv tool install "git+$REPO@$CG_SHA"
+        shell: bash
+      - name: Lint commits
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: commit-guard --range "origin/$BASE_REF..HEAD"
+        shell: bash
