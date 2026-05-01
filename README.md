@@ -160,6 +160,25 @@ commit-guard --require-scope
 commit-guard --scopes auth,api --require-scope
 ```
 
+### Required subject pattern
+
+Require the commit subject to match a regular expression. Useful for
+enforcing ticket references or any custom naming convention:
+
+```bash
+commit-guard --require-subject-pattern "[A-Z]+-[0-9]+"
+commit-guard --require-subject-pattern "#[0-9]+"
+```
+
+In `.commit-guard.toml`:
+
+```toml
+require-subject-pattern = "[A-Z]+-[0-9]+"
+```
+
+An invalid regex causes an immediate error at startup (exit 2). This
+check runs independently of `--enable`/`--disable`.
+
 ### Required custom trailers
 
 Require arbitrary trailers to be present in the commit message. Multiple
@@ -185,7 +204,7 @@ independently of `--enable`/`--disable`.
 Place `.commit-guard.toml` in your project root (or any parent directory) to
 set defaults for `enable`, `disable`, `scopes`, `require-scope`, `types`,
 `max-subject-length`, `min-description-length`, `require-lowercase`,
-`no-trailing-chars`, and `require-trailers`.
+`no-trailing-chars`, `require-subject-pattern`, and `require-trailers`.
 commit-guard searches upward from the working directory and uses the first
 file found.
 
@@ -357,6 +376,7 @@ jobs:
           disable: signed-off,signature
           scopes: auth,api,db
           require-scope: 'true'
+          require-subject-pattern: '[A-Z]+-[0-9]+'
           require-trailer: 'Closes,Reviewed-by'
           max-subject-length: '100'
           min-description-length: '10'

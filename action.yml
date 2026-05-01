@@ -49,6 +49,9 @@ inputs:
     description: Include merge commits when checking a range
     required: false
     default: 'false'
+  require-subject-pattern:
+    description: Regex the subject line must match (e.g. '[A-Z]+-[0-9]+')
+    required: false
   require-trailer:
     description: Comma-separated list of required trailers (e.g. Closes,Reviewed-by)
     required: false
@@ -86,6 +89,7 @@ runs:
         CG_NO_TRAILING_CHARS: ${{ inputs.no-trailing-chars }}
         CG_ALLOW_EMPTY: ${{ inputs.allow-empty }}
         CG_INCLUDE_MERGES: ${{ inputs.include-merges }}
+        CG_REQUIRE_SUBJECT_PATTERN: ${{ inputs.require-subject-pattern }}
         CG_REQUIRE_TRAILER: ${{ inputs.require-trailer }}
         CG_OUTPUT_FILE: ${{ inputs.output-file }}
       run: |
@@ -105,6 +109,8 @@ runs:
         [[ -n "$CG_NO_TRAILING_CHARS" ]] && ARGS+=(--no-trailing-chars "$CG_NO_TRAILING_CHARS")
         [[ "$CG_ALLOW_EMPTY" == "true" ]] && ARGS+=(--allow-empty)
         [[ "$CG_INCLUDE_MERGES" == "true" ]] && ARGS+=(--include-merges)
+        [[ -n "$CG_REQUIRE_SUBJECT_PATTERN" ]] && \
+            ARGS+=(--require-subject-pattern "$CG_REQUIRE_SUBJECT_PATTERN")
         [[ -n "$CG_REQUIRE_TRAILER" ]] && ARGS+=(--require-trailer "$CG_REQUIRE_TRAILER")
         [[ -n "$CG_OUTPUT_FILE" ]] && ARGS+=(--output-file "$CG_OUTPUT_FILE")
         commit-guard "${ARGS[@]}"

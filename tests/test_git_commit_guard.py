@@ -1,4 +1,5 @@
 import json
+import re
 import subprocess
 from argparse import ArgumentParser, Namespace
 from unittest.mock import MagicMock, patch
@@ -25,6 +26,7 @@ from git_commit_guard import (
     _resolve_no_trailing_chars,
     _resolve_require_lowercase,
     _resolve_required_trailers,
+    _resolve_subject_pattern,
     _resolve_types,
     _strip_comments,
     check_body,
@@ -33,6 +35,7 @@ from git_commit_guard import (
     check_signature,
     check_signed_off,
     check_subject,
+    check_subject_pattern,
     main,
 )
 
@@ -392,6 +395,55 @@ class TestResolveRequiredTrailers:
             {"require-trailers": ["Closes"]},
         )
         assert result == ["Fixes"]
+
+
+class TestCheckSubjectPattern:
+    def test_matching_subject_passes(self):
+        r = Result()
+        check_subject_pattern("feat: add PROJ-123 login", re.compile(r"[A-Z]+-\d+"), r)
+        assert r.ok
+
+    def test_non_matching_subject_fails(self):
+        r = Result()
+        check_subject_pattern(
+            "feat: implement OAuth login flow", re.compile(r"[A-Z]+-\d+"), r
+        )
+        assert not r.ok
+        assert "must match pattern" in r.errors[0][2]
+        assert "[A-Z]+-\\d+" in r.errors[0][2]
+
+    def test_error_includes_pattern(self):
+        r = Result()
+        check_subject_pattern("fix: oops", re.compile(r"#\d+"), r)
+        assert "#\\d+" in r.errors[0][2]
+
+
+class TestResolveSubjectPattern:
+    def test_defaults_to_none(self):
+        assert (
+            _resolve_subject_pattern(Namespace(require_subject_pattern=None), {})
+            is None
+        )
+
+    def test_cli_flag(self):
+        result = _resolve_subject_pattern(
+            Namespace(require_subject_pattern="[A-Z]+-\\d+"), {}
+        )
+        assert result == "[A-Z]+-\\d+"
+
+    def test_config(self):
+        result = _resolve_subject_pattern(
+            Namespace(require_subject_pattern=None),
+            {"require-subject-pattern": "#\\d+"},
+        )
+        assert result == "#\\d+"
+
+    def test_cli_overrides_config(self):
+        result = _resolve_subject_pattern(
+            Namespace(require_subject_pattern="[A-Z]+-\\d+"),
+            {"require-subject-pattern": "#\\d+"},
+        )
+        assert result == "[A-Z]+-\\d+"
 
 
 class TestCheckImperative:
@@ -1436,6 +1488,69 @@ class TestRequireTrailerIntegration:
             ),
         ):
             assert main() == 0
+
+
+class TestRequireSubjectPatternIntegration:
+    def test_matching_pattern_passes(self, tmp_path):
+        f = tmp_path / "msg"
+        f.write_text(
+            "fix: resolve PROJ-42 auth timeout\n\nbody\n\nSigned-off-by: A <a@b.com>"
+        )
+        argv = [
+            "cg",
+            "--message-file",
+            str(f),
+            "--disable",
+            "signature,imperative",
+            "--require-subject-pattern",
+            "[A-Z]+-[0-9]+",
+        ]
+        with patch("sys.argv", argv):
+            assert main() == 0
+
+    def test_non_matching_pattern_fails(self, tmp_path):
+        f = tmp_path / "msg"
+        f.write_text("fix: resolve auth timeout\n\nbody\n\nSigned-off-by: A <a@b.com>")
+        argv = [
+            "cg",
+            "--message-file",
+            str(f),
+            "--disable",
+            "signature,imperative",
+            "--require-subject-pattern",
+            "[A-Z]+-[0-9]+",
+        ]
+        with patch("sys.argv", argv):
+            assert main() == 1
+
+    def test_invalid_regex_exits(self, tmp_path):
+        f = tmp_path / "msg"
+        f.write_text("fix: add thing\n\nbody\n\nSigned-off-by: A <a@b.com>")
+        argv = [
+            "cg",
+            "--message-file",
+            str(f),
+            "--disable",
+            "signature,imperative",
+            "--require-subject-pattern",
+            "[unclosed",
+        ]
+        with patch("sys.argv", argv), pytest.raises(SystemExit) as exc:
+            main()
+        assert exc.value.code == 2
+
+    def test_pattern_from_config(self, tmp_path):
+        f = tmp_path / "msg"
+        f.write_text("fix: resolve auth timeout\n\nbody\n\nSigned-off-by: A <a@b.com>")
+        argv = ["cg", "--message-file", str(f), "--disable", "signature,imperative"]
+        with (
+            patch("sys.argv", argv),
+            patch(
+                "git_commit_guard._load_config",
+                return_value={"require-subject-pattern": "[A-Z]+-[0-9]+"},
+            ),
+        ):
+            assert main() == 1
 
 
 class TestOutputJsonl:
