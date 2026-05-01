@@ -22,6 +22,8 @@ from git_commit_guard import (
     _report_text,
     _resolve_max_subject_length,
     _resolve_min_description_length,
+    _resolve_no_trailing_chars,
+    _resolve_require_lowercase,
     _resolve_required_trailers,
     _resolve_types,
     _strip_comments,
@@ -454,6 +456,19 @@ class TestCheckImperative:
         check_imperative("", r)
         assert r.ok
 
+    def test_pos_fallback_unknown_word_fails(self):
+        r = Result()
+        with (
+            patch("git_commit_guard.wordnet.morphy", return_value=None),
+            patch(
+                "git_commit_guard.nltk.pos_tag",
+                return_value=[("to", "TO"), ("xyzzy", "NN")],
+            ),
+        ):
+            check_imperative("xyzzy something", r)
+        assert not r.ok
+        assert "POS=NN" in r.errors[0][2]
+
 
 class TestDownloadIfMissing:
     def test_skips_download_when_present(self):
@@ -615,6 +630,38 @@ class TestResolveMinDescriptionLength:
             Namespace(min_description_length=10), {"min-description-length": 8}
         )
         assert result == 10
+
+
+class TestResolveRequireLowercase:
+    def test_cli_flag_overrides_default(self):
+        assert (
+            _resolve_require_lowercase(Namespace(require_lowercase=False), {}) is False
+        )
+
+    def test_config_overrides_default(self):
+        result = _resolve_require_lowercase(
+            Namespace(require_lowercase=None), {"require-lowercase": False}
+        )
+        assert result is False
+
+    def test_default_is_true(self):
+        assert _resolve_require_lowercase(Namespace(require_lowercase=None), {}) is True
+
+
+class TestResolveNoTrailingChars:
+    def test_cli_flag_overrides_default(self):
+        result = _resolve_no_trailing_chars(Namespace(no_trailing_chars=".,!"), {})
+        assert result == frozenset({".", "!"})
+
+    def test_config_overrides_default(self):
+        result = _resolve_no_trailing_chars(
+            Namespace(no_trailing_chars=None), {"no-trailing-chars": [".", "!"]}
+        )
+        assert result == frozenset({".", "!"})
+
+    def test_default_is_period(self):
+        result = _resolve_no_trailing_chars(Namespace(no_trailing_chars=None), {})
+        assert result == frozenset(".")
 
 
 class TestGitTimeout:
@@ -1457,6 +1504,27 @@ class TestOutputJsonl:
             data = json.loads(line)
             assert data["sha"] == rev
             assert data["ok"] is True
+
+    def test_range_failing_commit_returns_nonzero(self, capsys):
+        with (
+            patch(
+                "sys.argv",
+                [
+                    "cg",
+                    "--range",
+                    "HEAD~1..HEAD",
+                    "--disable",
+                    "signature,imperative",
+                    "--output",
+                    "jsonl",
+                ],
+            ),
+            patch("git_commit_guard._get_range_revs", return_value=["aaa"]),
+            patch("git_commit_guard._get_message", return_value="bad message"),
+        ):
+            assert main() == 1
+        data = json.loads(capsys.readouterr().out)
+        assert data["ok"] is False
 
 
 class TestOutputFile:
