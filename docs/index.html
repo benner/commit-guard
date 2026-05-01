@@ -377,7 +377,7 @@ $ echo "fix(auth): add token refresh" | commit-guard</code></pre>
               </tr>
               <tr>
                 <td><code>signature</code></td>
-                <td>GPG or SSH signature is valid</td>
+                <td>GPG or SSH signature is valid — verified via GitHub public key lookup</td>
               </tr>
             </tbody>
           </table>
@@ -425,6 +425,25 @@ require-subject-pattern = "[A-Z]+-[0-9]+"</code></pre>
           non-empty value after the colon (e.g. <code>Closes: #42</code>):
         </p>
         <pre><code class="language-bash">commit-guard --require-trailer "Closes,Reviewed-by"</code></pre>
+
+        <h3>Signature verification</h3>
+        <p>
+          The <code>signature</code> check verifies commits without requiring a
+          pre-configured local keyring:
+        </p>
+        <ol>
+          <li>Look up the commit author's email via the GitHub search API to find their username.</li>
+          <li>Fetch their public keys from <code>github.com/{username}.gpg</code> and <code>github.com/{username}.keys</code>.</li>
+          <li>Try GPG verification using a temporary keyring.</li>
+          <li>Try SSH verification using a temporary <code>allowed_signers</code> file.</li>
+          <li>Pass if any key verifies; fail if none do.</li>
+        </ol>
+        <p>
+          If the author's email is not found on GitHub, or the API is
+          unreachable, the check fails with a clear error. Disable the
+          <code>signature</code> check if GitHub API access is unavailable:
+        </p>
+        <pre><code class="language-bash">commit-guard --disable signature</code></pre>
 
         <h3>Range options</h3>
         <p>
