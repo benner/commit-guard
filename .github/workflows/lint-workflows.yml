@@ -21,6 +21,30 @@ jobs:
         with:
           github_token: ${{ github.token }}
           reporter: github-pr-review
+  yamlfix:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Checkout code
+        # yamllint disable-line rule:line-length
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # ratchet:actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Set up uv
+        # yamllint disable-line rule:line-length
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78  # ratchet:astral-sh/setup-uv@v7
+      - name: Set up reviewdog
+        # yamllint disable-line rule:line-length
+        uses: reviewdog/action-setup@d8a7baabd7f3e8544ee4dbde3ee41d0011c3a93f  # ratchet:reviewdog/action-setup@v1
+      - name: Run yamlfix
+        env:
+          REVIEWDOG_GITHUB_API_TOKEN: ${{ github.token }}
+        run: |-
+          uvx yamlfix .github/workflows/
+          git diff .github/workflows/ |
+            reviewdog -f=diff -name=yamlfix \
+              -reporter=github-pr-review -fail-on-error
   zizmor:
     runs-on: ubuntu-latest
     permissions:
