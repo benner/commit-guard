@@ -4,7 +4,6 @@ on:  # yamllint disable-line rule:truthy
   pull_request:
 permissions:
   contents: read
-  pull-requests: write
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -27,9 +26,14 @@ jobs:
           uv run --dev pytest \
             tests/ --cov=git_commit_guard --cov-report=term-missing \
             --cov-report=xml
-      - name: Post coverage comment
+      - name: Save coverage artifact
+        run: |
+          mkdir -p ./pr
+          echo ${{ github.event.number }} > ./pr/NR
+          cp coverage.xml ./pr/
+      - name: Upload PR artifact
         # yamllint disable-line rule:line-length
-        uses: MishaKav/pytest-coverage-comment@dd5b80bde6d16941f336518e92929e89069d8451  # v1.7.2
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # ratchet:actions/upload-artifact@v4
         with:
-          pytest-xml-coverage-path: coverage.xml
-          unique-id-for-comment: coverage
+          name: pr
+          path: pr/

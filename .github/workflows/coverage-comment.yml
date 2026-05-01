@@ -1,0 +1,39 @@
+---
+name: Coverage Comment
+on:  # yamllint disable-line rule:truthy  # zizmor: ignore[dangerous-triggers]
+  workflow_run:
+    workflows: [Test]
+    types: [completed]
+permissions:
+  actions: read
+  pull-requests: write
+jobs:
+  comment:
+    runs-on: ubuntu-latest
+    if: >-
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.conclusion == 'success'
+    steps:
+      - name: Download artifact
+        # yamllint disable-line rule:line-length
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # ratchet:actions/download-artifact@v4
+        with:
+          run-id: ${{ github.event.workflow_run.id }}
+          name: pr
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Read PR number
+        id: pr
+        run: |
+          pr_number=$(cat NR)
+          if ! [[ "$pr_number" =~ ^[0-9]+$ ]]; then
+            echo "Invalid PR number: $pr_number" >&2
+            exit 1
+          fi
+          echo "number=$pr_number" >> "$GITHUB_OUTPUT"
+      - name: Post coverage comment
+        # yamllint disable-line rule:line-length
+        uses: MishaKav/pytest-coverage-comment@dd5b80bde6d16941f336518e92929e89069d8451  # ratchet:MishaKav/pytest-coverage-comment@v1.7.2
+        with:
+          pytest-xml-coverage-path: coverage.xml
+          unique-id-for-comment: coverage
+          issue-number: ${{ steps.pr.outputs.number }}
