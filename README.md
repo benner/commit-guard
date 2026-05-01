@@ -110,6 +110,26 @@ In `.commit-guard.toml`:
 require-lowercase = false
 ```
 
+By default trailing `.` is forbidden. To change the set of forbidden trailing
+characters (any character is valid, including space):
+
+```bash
+commit-guard --no-trailing-chars ".,"
+commit-guard --no-trailing-chars ".,!"
+```
+
+In `.commit-guard.toml`:
+
+```toml
+no-trailing-chars = [".", "!"]
+```
+
+Pass an empty list to disable the check entirely:
+
+```toml
+no-trailing-chars = []
+```
+
 ### Type validation
 
 By default the standard conventional commit types are accepted. Use `--types`
@@ -164,8 +184,8 @@ independently of `--enable`/`--disable`.
 
 Place `.commit-guard.toml` in your project root (or any parent directory) to
 set defaults for `enable`, `disable`, `scopes`, `require-scope`, `types`,
-`max-subject-length`, `min-description-length`, `require-lowercase`, and
-`require-trailers`.
+`max-subject-length`, `min-description-length`, `require-lowercase`,
+`no-trailing-chars`, and `require-trailers`.
 commit-guard searches upward from the working directory and uses the first
 file found.
 
@@ -178,6 +198,7 @@ types = ["feat", "fix", "chore", "wip"]
 max-subject-length = 100
 min-description-length = 10
 require-lowercase = false
+no-trailing-chars = [".", "!"]
 require-trailers = ["Closes", "Reviewed-by"]
 ```
 
@@ -188,7 +209,7 @@ enable = ["subject", "imperative"]
 
 CLI flags (`--enable`, `--disable`, `--scopes`, `--require-scope`, `--types`,
 `--max-subject-length`, `--min-description-length`, `--no-require-lowercase`,
-`--require-trailer`) take
+`--no-trailing-chars`, `--require-trailer`) take
 full precedence and ignore config file values when provided.
 
 ### Environment variables
@@ -340,6 +361,7 @@ jobs:
           max-subject-length: '100'
           min-description-length: '10'
           no-require-lowercase: 'true'
+          no-trailing-chars: '.,!'
           allow-empty: 'true'
           include-merges: 'true'
           output-file: results.jsonl

@@ -146,13 +146,14 @@ def _strip_comments(message):
     )
 
 
-def check_subject(  # noqa: PLR0913 Too many arguments in function definition (7 > 5)
+def check_subject(  # noqa: PLR0913 Too many arguments in function definition (9 > 5)
     line,
     result,
     allowed_scopes=frozenset(),
     allowed_types=TYPES,
     max_subject_length=MAX_SUBJECT_LEN,
     min_description_length=0,
+    no_trailing_chars=frozenset("."),
     *,
     require_scope=False,
     require_lowercase=True,
@@ -177,8 +178,8 @@ def check_subject(  # noqa: PLR0913 Too many arguments in function definition (7
     desc = m.group("desc")
     if require_lowercase and desc[0].isupper():
         result.error("description must not start with uppercase", check=Check.SUBJECT)
-    if desc.endswith("."):
-        result.error("description must not end with period", check=Check.SUBJECT)
+    if no_trailing_chars and desc[-1] in no_trailing_chars:
+        result.error(f"description must not end with {desc[-1]!r}", check=Check.SUBJECT)
     if len(line) > max_subject_length:
         result.error(
             f"subject too long: {len(line)} > {max_subject_length}", check=Check.SUBJECT
@@ -307,6 +308,7 @@ class Args:
     max_subject_length: int
     min_description_length: int
     require_lowercase: bool
+    no_trailing_chars: frozenset
     rev_range: str | None
     allow_empty: bool
     include_merges: bool
@@ -353,6 +355,14 @@ def _resolve_require_lowercase(args, config):
     if "require-lowercase" in config:
         return config["require-lowercase"]
     return True
+
+
+def _resolve_no_trailing_chars(args, config):
+    if args.no_trailing_chars is not None:
+        return frozenset(c for c in args.no_trailing_chars.split(",") if c)
+    if "no-trailing-chars" in config:
+        return frozenset(config["no-trailing-chars"])
+    return frozenset(".")
 
 
 def _resolve_required_trailers(args, config):
@@ -449,6 +459,12 @@ def _parse_args():
         help="allow description to start with uppercase (default: disallowed)",
     )
     parser.add_argument(
+        "--no-trailing-chars",
+        default=None,
+        metavar="CHAR[,CHAR,...]",
+        help="forbidden trailing characters in description (default: '.')",
+    )
+    parser.add_argument(
         "--range",
         dest="rev_range",
         metavar="REF..REF",
@@ -491,6 +507,7 @@ def _parse_args():
     max_subject_length = _resolve_max_subject_length(args, config)
     min_description_length = _resolve_min_description_length(args, config)
     require_lowercase = _resolve_require_lowercase(args, config)
+    no_trailing_chars = _resolve_no_trailing_chars(args, config)
     required_trailers = _resolve_required_trailers(args, config)
 
     if args.allow_empty and not args.rev_range:
@@ -526,6 +543,7 @@ def _parse_args():
         max_subject_length=max_subject_length,
         min_description_length=min_description_length,
         require_lowercase=require_lowercase,
+        no_trailing_chars=no_trailing_chars,
         rev_range=args.rev_range,
         allow_empty=args.allow_empty,
         include_merges=args.include_merges,
@@ -579,6 +597,7 @@ def _run_checks(args, rev, message, result):
             args.allowed_types,
             args.max_subject_length,
             args.min_description_length,
+            args.no_trailing_chars,
             require_scope=args.require_scope,
             require_lowercase=args.require_lowercase,
         )
