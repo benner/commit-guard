@@ -27,6 +27,7 @@ from git_commit_guard import (
     _load_config,
     _parse_checks,
     _parse_config_checks,
+    _parse_noreply_username,
     _report_jsonl,
     _report_text,
     _resolve_max_subject_length,
@@ -569,6 +570,23 @@ class TestFetchUrl:
             assert _fetch_url("https://github.com/user.keys") == "key data"
 
 
+class TestParseNoreplyUsername:
+    def test_id_plus_username_format(self):
+        assert (
+            _parse_noreply_username("12345678+alice@users.noreply.github.com")
+            == "alice"
+        )
+
+    def test_plain_username_format(self):
+        assert _parse_noreply_username("alice@users.noreply.github.com") == "alice"
+
+    def test_regular_email_returns_none(self):
+        assert _parse_noreply_username("alice@example.com") is None
+
+    def test_wrong_domain_returns_none(self):
+        assert _parse_noreply_username("alice@users.noreply.gitlab.com") is None
+
+
 class TestFetchGithubUsername:
     def _mock_response(self, data):
         mock_resp = MagicMock()
@@ -886,6 +904,45 @@ class TestCheckSignature:
             check_signature("abc123", r)
         assert r.ok
         mock_commits_api.assert_not_called()
+
+    def test_noreply_email_skips_email_search(self):
+        r = Result()
+        with (
+            patch(
+                "git_commit_guard._get_author_email",
+                return_value="12345678+alice@users.noreply.github.com",
+            ),
+            patch("git_commit_guard._get_github_remote_info", return_value=None),
+            patch("git_commit_guard._fetch_github_username") as mock_email_search,
+            patch("git_commit_guard._fetch_github_keys", return_value=("GPG KEY", "")),
+            patch("git_commit_guard._verify_gpg", return_value=True),
+        ):
+            check_signature("abc123", r)
+        assert r.ok
+        mock_email_search.assert_not_called()
+
+    def test_noreply_fallback_after_commits_api_failure(self):
+        r = Result()
+        with (
+            patch(
+                "git_commit_guard._get_author_email",
+                return_value="12345678+alice@users.noreply.github.com",
+            ),
+            patch(
+                "git_commit_guard._get_github_remote_info",
+                return_value=("owner", "repo"),
+            ),
+            patch(
+                "git_commit_guard._fetch_github_commit_author",
+                side_effect=urllib.error.URLError("not found"),
+            ),
+            patch("git_commit_guard._fetch_github_username") as mock_email_search,
+            patch("git_commit_guard._fetch_github_keys", return_value=("GPG KEY", "")),
+            patch("git_commit_guard._verify_gpg", return_value=True),
+        ):
+            check_signature("abc123", r)
+        assert r.ok
+        mock_email_search.assert_not_called()
 
 
 class TestGetMessage:

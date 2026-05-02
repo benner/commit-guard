@@ -37,6 +37,7 @@ _TRAILER_RE = re.compile(r"^[\w-]+:\s+\S")
 _GITHUB_REMOTE_RE = re.compile(
     r"github\.com[:/](?P<owner>[^/]+)/(?P<repo>[^/\s]+?)(?:\.git)?$"
 )
+_NOREPLY_RE = re.compile(r"^(?:\d+\+)?(?P<username>[^@]+)@users\.noreply\.github\.com$")
 
 SUBJECT_RE = re.compile(
     r"^(?P<type>\w+)(?:\((?P<scope>[^)]+)\))?!?:\s+(?P<desc>.+)$",
@@ -300,6 +301,11 @@ def _fetch_github_commit_author(owner, repo, sha):
     return author["login"] if author else None
 
 
+def _parse_noreply_username(email):
+    match = _NOREPLY_RE.match(email)
+    return match.group("username") if match else None
+
+
 def _fetch_github_username(email):
     url = f"https://api.github.com/search/users?q={email}+in:email"
     req = urllib.request.Request(url, headers={"Accept": "application/vnd.github+json"})  # noqa: S310 Audit URL open for permitted schemes
@@ -385,6 +391,8 @@ def check_signature(rev, result):
             owner, repo = remote
             with contextlib.suppress(urllib.error.URLError, TimeoutError):
                 username = _fetch_github_commit_author(owner, repo, rev)
+        if username is None:
+            username = _parse_noreply_username(email)
         if username is None:
             username = _fetch_github_username(email)
         if username is None:
