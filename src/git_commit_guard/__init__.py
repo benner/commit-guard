@@ -34,6 +34,9 @@ TYPES = frozenset(
 
 _NON_IMPERATIVE_SUFFIX_RE = re.compile(r"(?:ing|ed)$")
 _TRAILER_RE = re.compile(r"^[\w-]+:\s+\S")
+_GITHUB_REMOTE_RE = re.compile(
+    r"github\.com[:/](?P<owner>[^/]+)/(?P<repo>[^/\s]+?)(?:\.git)?$"
+)
 
 SUBJECT_RE = re.compile(
     r"^(?P<type>\w+)(?:\((?P<scope>[^)]+)\))?!?:\s+(?P<desc>.+)$",
@@ -268,6 +271,35 @@ def _get_author_email(rev):
     ).strip()
 
 
+def _get_github_remote_info():
+    try:
+        url = subprocess.check_output(
+            ["git", "remote", "get-url", "origin"],  # noqa: S607 Starting a process with a partial executable path
+            text=True,
+            stderr=subprocess.PIPE,
+            timeout=_git_timeout(),
+        ).strip()
+    except subprocess.CalledProcessError:
+        return None
+    match = _GITHUB_REMOTE_RE.search(url)
+    if not match:
+        return None
+    return match.group("owner"), match.group("repo")
+
+
+def _fetch_github_commit_author(owner, repo, sha):
+    url = f"https://api.github.com/repos/{owner}/{repo}/commits/{sha}"
+    headers = {"Accept": "application/vnd.github+json"}
+    token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    req = urllib.request.Request(url, headers=headers)  # noqa: S310 Audit URL open for permitted schemes
+    with urllib.request.urlopen(req, timeout=_git_timeout()) as resp:  # noqa: S310 Audit URL open for permitted schemes
+        data = json.loads(resp.read())
+    author = data.get("author")
+    return author["login"] if author else None
+
+
 def _fetch_github_username(email):
     url = f"https://api.github.com/search/users?q={email}+in:email"
     req = urllib.request.Request(url, headers={"Accept": "application/vnd.github+json"})  # noqa: S310 Audit URL open for permitted schemes
@@ -347,7 +379,14 @@ def _verify_ssh(rev, email, ssh_text):
 def check_signature(rev, result):
     try:
         email = _get_author_email(rev)
-        username = _fetch_github_username(email)
+        username = None
+        remote = _get_github_remote_info()
+        if remote:
+            owner, repo = remote
+            with contextlib.suppress(urllib.error.URLError, TimeoutError):
+                username = _fetch_github_commit_author(owner, repo, rev)
+        if username is None:
+            username = _fetch_github_username(email)
         if username is None:
             result.error(
                 "commit author not found on GitHub — cannot verify signature",

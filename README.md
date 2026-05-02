@@ -77,8 +77,8 @@ Available checks:
 * `imperative` - First word is an imperative verb (for example `add` not `added`)
 * `body` - Blank line separates subject from body, and body is non-empty
 * `signed-off` - `Signed-off-by:` trailer exists
-* `signature` - Verify GPG or SSH signature via GitHub public key lookup, with
-    fallback to `git verify-commit`
+* `signature` - Verify GPG or SSH signature via the GitHub Commits API or
+    public key lookup
 
 ### Subject length
 
@@ -202,20 +202,27 @@ independently of `--enable`/`--disable`.
 
 ### Signature verification
 
-The `signature` check tries to verify the commit without any local keyring setup:
+The `signature` check verifies the commit without any local keyring setup:
 
-1. Look up the commit author's email in the GitHub API to find their GitHub
-   username.
-2. Fetch their public keys from `github.com/{username}.gpg` and
+1. If the repo has a GitHub remote, call the Commits API
+   (`GET /repos/{owner}/{repo}/commits/{sha}`) to resolve the author's GitHub
+   username — this works for corporate emails, noreply addresses, or any email
+   not listed publicly on a GitHub profile.
+2. If the Commits API is unavailable (no GitHub remote, commit not yet pushed,
+   or API error), fall back to searching GitHub by the commit author's email.
+3. Fetch the resolved user's public keys from `github.com/{username}.gpg` and
    `github.com/{username}.keys`.
-3. Try GPG verification: import the fetched key into a temporary keyring and
+4. Try GPG verification: import the fetched key into a temporary keyring and
    run `git verify-commit`.
-4. Try SSH verification: write a temporary `allowed_signers` file and run
+5. Try SSH verification: write a temporary `allowed_signers` file and run
    `git verify-commit` with the SSH allowed-signers config.
-5. If any key verifies, the check passes. If none do, it fails.
+6. If any key verifies, the check passes. If none do, it fails.
 
-If the author's email is not found on GitHub, or the API is unreachable, the
-check fails with a clear error — there is no silent fallback.
+If the author cannot be resolved via either method, or the GitHub API is
+unreachable, the check fails with a clear error.
+
+For private repositories, set `GITHUB_TOKEN` or `GH_TOKEN` so the Commits API
+can authenticate.
 
 ### Configuration file
 
@@ -251,9 +258,11 @@ full precedence and ignore config file values when provided.
 
 ### Environment variables
 
-| Variable                   | Default | Description                                  |
-| -------------------------- | ------- | -------------------------------------------- |
-| `COMMIT_GUARD_GIT_TIMEOUT` | `10`    | Timeout in seconds for git subprocess calls. |
+| Variable                   | Default | Description                                                               |
+| -------------------------- | ------- | ------------------------------------------------------------------------- |
+| `COMMIT_GUARD_GIT_TIMEOUT` | `10`    | Timeout in seconds for git subprocess calls.                              |
+| `GITHUB_TOKEN`             | —       | GitHub token for Commits API access on private repos (signature check).   |
+| `GH_TOKEN`                 | —       | Alias for `GITHUB_TOKEN`; used when `GITHUB_TOKEN` is not set.            |
 
 ```bash
 COMMIT_GUARD_GIT_TIMEOUT=30 commit-guard --range origin/main..HEAD
