@@ -342,7 +342,7 @@ def _verify_gpg(rev, gpg_text):
         if import_proc.returncode != 0:
             return False
         verify_proc = subprocess.run(  # noqa: S603
-            ["git", "verify-commit", rev],  # noqa: S607
+            ["git", "-c", "gpg.ssh.allowedSignersFile=/dev/null", "verify-commit", rev],  # noqa: S607
             capture_output=True,
             text=True,
             env=env,
@@ -367,6 +367,8 @@ def _verify_ssh(rev, email, ssh_text):
         proc = subprocess.run(  # noqa: S603
             [  # noqa: S607
                 "git",
+                "-c",
+                "gpg.format=ssh",
                 "-c",
                 f"gpg.ssh.allowedSignersFile={signers_path}",
                 "verify-commit",

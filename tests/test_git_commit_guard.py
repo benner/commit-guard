@@ -719,8 +719,10 @@ class TestVerifyGpg:
         verify_proc = MagicMock(returncode=0)
         with patch(
             "git_commit_guard.subprocess.run", side_effect=[import_proc, verify_proc]
-        ):
+        ) as mock_run:
             assert _verify_gpg("abc123", "gpg key data") is True
+        verify_cmd = mock_run.call_args_list[1][0][0]
+        assert "gpg.ssh.allowedSignersFile=/dev/null" in verify_cmd
 
     def test_verify_failure_returns_false(self):
         import_proc = MagicMock(returncode=0)
@@ -737,10 +739,13 @@ class TestVerifySSH:
 
     def test_verify_success_returns_true(self):
         proc = MagicMock(returncode=0)
-        with patch("git_commit_guard.subprocess.run", return_value=proc):
+        with patch("git_commit_guard.subprocess.run", return_value=proc) as mock_run:
             assert (
                 _verify_ssh("abc123", "user@example.com", "ssh-ed25519 AAAA...") is True
             )
+        verify_cmd = mock_run.call_args[0][0]
+        assert "-c" in verify_cmd
+        assert "gpg.format=ssh" in verify_cmd
 
     def test_verify_failure_returns_false(self):
         proc = MagicMock(returncode=1)
