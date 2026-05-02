@@ -437,8 +437,12 @@ require-subject-pattern = "[A-Z]+-[0-9]+"</code></pre>
             the author's GitHub username — works for corporate emails, noreply
             addresses, or any email not listed publicly on a GitHub profile.</li>
           <li>If the Commits API is unavailable (no GitHub remote, commit not
-            yet pushed, or API error), fall back to searching GitHub by the
-            commit author's email.</li>
+            yet pushed, or API error), parse the username directly from a
+            GitHub noreply address
+            (<code>{id}+{username}@users.noreply.github.com</code>) — no API
+            call needed.</li>
+          <li>If neither of the above resolves a username, fall back to
+            searching GitHub by the commit author's email.</li>
           <li>Fetch the resolved user's public keys from
             <code>github.com/{username}.gpg</code> and
             <code>github.com/{username}.keys</code>.</li>

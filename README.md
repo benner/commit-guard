@@ -209,14 +209,18 @@ The `signature` check verifies the commit without any local keyring setup:
    username — this works for corporate emails, noreply addresses, or any email
    not listed publicly on a GitHub profile.
 2. If the Commits API is unavailable (no GitHub remote, commit not yet pushed,
-   or API error), fall back to searching GitHub by the commit author's email.
-3. Fetch the resolved user's public keys from `github.com/{username}.gpg` and
+   or API error), parse the username directly from a GitHub noreply address
+   (`{id}+{username}@users.noreply.github.com` or
+   `{username}@users.noreply.github.com`) — no API call needed.
+3. If neither of the above resolves a username, fall back to searching GitHub
+   by the commit author's email.
+4. Fetch the resolved user's public keys from `github.com/{username}.gpg` and
    `github.com/{username}.keys`.
-4. Try GPG verification: import the fetched key into a temporary keyring and
+5. Try GPG verification: import the fetched key into a temporary keyring and
    run `git verify-commit`.
-5. Try SSH verification: write a temporary `allowed_signers` file and run
+6. Try SSH verification: write a temporary `allowed_signers` file and run
    `git verify-commit` with the SSH allowed-signers config.
-6. If any key verifies, the check passes. If none do, it fails.
+7. If any key verifies, the check passes. If none do, it fails.
 
 If the author cannot be resolved via either method, or the GitHub API is
 unreachable, the check fails with a clear error.
