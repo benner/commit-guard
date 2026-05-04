@@ -27,9 +27,11 @@ jobs:
             tests/ --cov=git_commit_guard --cov-report=term-missing \
             --cov-report=xml
       - name: Save coverage artifact
+        env:
+          PR_NUMBER: ${{ github.event.number }}
         run: |
           mkdir -p ./pr
-          echo ${{ github.event.number }} > ./pr/NR
+          echo "$PR_NUMBER" > ./pr/NR
           cp coverage.xml ./pr/
       - name: Upload PR artifact
         # yamllint disable-line rule:line-length
