@@ -1017,6 +1017,12 @@ class TestLoadConfig:
         (subdir / ".commit-guard.toml").write_text('disable = ["signature"]\n')
         assert _load_config(subdir) == {"disable": ["signature"]}
 
+    def test_malformed_toml_exits_with_path(self, tmp_path):
+        config_path = tmp_path / ".commit-guard.toml"
+        config_path.write_text("disable = [unclosed\n")
+        with pytest.raises(SystemExit, match=re.escape(str(config_path))):
+            _load_config(tmp_path)
+
 
 class TestParseConfigChecks:
     def test_disable_list(self):

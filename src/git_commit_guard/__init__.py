@@ -78,7 +78,10 @@ def _load_config(start=None):
         config_path = directory / ".commit-guard.toml"
         if config_path.exists():
             with config_path.open("rb") as f:
-                return tomllib.load(f)
+                try:
+                    return tomllib.load(f)
+                except tomllib.TOMLDecodeError as e:
+                    sys.exit(f"{config_path}: {e}")
     return {}
 
 
