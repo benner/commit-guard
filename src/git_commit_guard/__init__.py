@@ -411,6 +411,11 @@ def check_signature(rev, result):
             result.info("signature type: SSH", check=Check.SIGNATURE)
             return
         result.error("commit is not signed (GPG/SSH)", check=Check.SIGNATURE)
+    except subprocess.TimeoutExpired:
+        result.error(
+            "git operation timed out — cannot verify signature",
+            check=Check.SIGNATURE,
+        )
     except (urllib.error.URLError, TimeoutError):
         result.error(
             "GitHub API unreachable — cannot verify signature",

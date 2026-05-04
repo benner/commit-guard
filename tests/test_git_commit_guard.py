@@ -833,6 +833,16 @@ class TestCheckSignature:
         assert not r.ok
         assert any("API unreachable" in msg for _, _, msg in r.errors)
 
+    def test_subprocess_timeout_fails_gracefully(self):
+        r = Result()
+        with patch(
+            "git_commit_guard._get_author_email",
+            side_effect=subprocess.TimeoutExpired(cmd="git", timeout=10),
+        ):
+            check_signature("abc123", r)
+        assert not r.ok
+        assert any("git operation timed out" in msg for _, _, msg in r.errors)
+
     def test_commits_api_resolves_username(self):
         r = Result()
         with (
