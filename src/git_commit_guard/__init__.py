@@ -706,7 +706,7 @@ def _parse_args():  # noqa: PLR0915 Too many statements (59 > 50)
         message = ""
     elif args.message_file:
         rev = None
-        message = _strip_comments(args.message_file.read_text().strip())
+        message = _strip_comments(args.message_file.read_text(encoding="utf-8").strip())
     elif args.rev:
         rev = args.rev
         message = _strip_comments(_get_message(rev))

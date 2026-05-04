@@ -1260,6 +1260,18 @@ class TestMain:
             assert main() == 0
         assert "all checks passed" in capsys.readouterr().out
 
+    def test_from_message_file_utf8_non_ascii(self, tmp_path):
+        f = tmp_path / "msg"
+        f.write_bytes(
+            "fix: handle non-ascii\n\nbody\n\n"
+            "Signed-off-by: Nerijus Bendžiūnas <a@b.com>".encode()
+        )
+        with patch(
+            "sys.argv",
+            ["cg", "--message-file", str(f), "--disable", "signature"],
+        ):
+            assert main() == 0
+
     def test_from_stdin(self):
         stdin = MagicMock()
         stdin.isatty.return_value = False
