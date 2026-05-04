@@ -538,13 +538,13 @@ require-subject-pattern = "[A-Z]+-[0-9]+"</code></pre>
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: benner/commit-guard@v0.19.0
+      - uses: benner/commit-guard@v0.20.0
         with:
           range: ${{ env.PR_BASE }}..${{ env.PR_HEAD }}
           disable: signed-off,signature</code></pre>
 
         <p>Check a specific commit SHA:</p>
-        <pre><code class="language-yaml">      - uses: benner/commit-guard@v0.19.0
+        <pre><code class="language-yaml">      - uses: benner/commit-guard@v0.20.0
         with:
           rev: ${{ github.sha }}</code></pre>
 
@@ -563,7 +563,7 @@ require-subject-pattern = "[A-Z]+-[0-9]+"</code></pre>
           When <code>output-file</code> is set the action exposes the path as
           a step output, making JSONL results available to subsequent steps:
         </p>
-        <pre><code class="language-yaml">      - uses: benner/commit-guard@v0.19.0
+        <pre><code class="language-yaml">      - uses: benner/commit-guard@v0.20.0
         id: cg
         with:
           range: ${{ env.PR_BASE }}..${{ env.PR_HEAD }}
@@ -576,7 +576,7 @@ require-subject-pattern = "[A-Z]+-[0-9]+"</code></pre>
         <p>Add to <code>.pre-commit-config.yaml</code>:</p>
         <pre><code class="language-yaml">repos:
   - repo: https://github.com/benner/commit-guard
-    rev: v0.19.0
+    rev: v0.20.0
     hooks:
       - id: commit-guard
       - id: commit-guard-signature</code></pre>
