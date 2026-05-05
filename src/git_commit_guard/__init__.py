@@ -249,7 +249,10 @@ def check_body(lines, result):
 
 def check_signed_off(message, result):
     if not SIGNED_OFF_RE.search(message):
-        result.error("missing 'Signed-off-by' trailer", check=Check.SIGNED_OFF)
+        result.error(
+            "missing 'Signed-off-by' trailer — use 'git commit -s'",
+            check=Check.SIGNED_OFF,
+        )
 
 
 def check_subject_pattern(subject, pattern, result):

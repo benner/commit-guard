@@ -325,6 +325,11 @@ class TestCheckSignedOff:
         check_signed_off("fix: add thing\n\nbody", r)
         assert not r.ok
 
+    def test_missing_message_hints_at_git_commit_dash_s(self):
+        r = Result()
+        check_signed_off("fix: add thing\n\nbody", r)
+        assert any("git commit -s" in m for _, _, m in r.errors)
+
     def test_malformed_no_email(self):
         r = Result()
         check_signed_off("fix: add thing\n\nSigned-off-by: John Doe", r)
