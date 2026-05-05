@@ -151,6 +151,12 @@ def _download_if_missing(resource):
         nltk.download(resource.rsplit("/", maxsplit=1)[-1], quiet=True)
 
 
+def _format_allowed_hint(allowed, kind):
+    if len(allowed) <= len(TYPES):
+        return f"(allowed: {', '.join(sorted(allowed))})"
+    return f"(see configured {kind})"
+
+
 def _strip_comments(message):
     return "\n".join(
         line for line in message.split("\n") if not line.lstrip().startswith("#")
@@ -178,13 +184,16 @@ def check_subject(  # noqa: PLR0913 Too many arguments in function definition (9
         return None
 
     if m.group("type") not in allowed_types:
-        result.error(f"unknown type: {m.group('type')}", check=Check.SUBJECT)
+        bad_type = m.group("type")
+        hint = _format_allowed_hint(allowed_types, "types")
+        result.error(f"unknown type: {bad_type} {hint}", check=Check.SUBJECT)
 
     scope = m.group("scope")
     if require_scope and scope is None:
         result.error("scope is required", check=Check.SUBJECT)
     if allowed_scopes and scope is not None and scope not in allowed_scopes:
-        result.error(f"unknown scope: {scope}", check=Check.SUBJECT)
+        hint = _format_allowed_hint(allowed_scopes, "scopes")
+        result.error(f"unknown scope: {scope} {hint}", check=Check.SUBJECT)
 
     desc = m.group("desc")
     if require_lowercase and desc[0].isupper():
@@ -249,7 +258,10 @@ def check_body(lines, result):
 
 def check_signed_off(message, result):
     if not SIGNED_OFF_RE.search(message):
-        result.error("missing 'Signed-off-by' trailer", check=Check.SIGNED_OFF)
+        result.error(
+            "missing 'Signed-off-by' trailer — use 'git commit -s'",
+            check=Check.SIGNED_OFF,
+        )
 
 
 def check_subject_pattern(subject, pattern, result):

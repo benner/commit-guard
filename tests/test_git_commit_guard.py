@@ -124,6 +124,25 @@ class TestCheckSubject:
         check_subject("unknown: add thing", r)
         assert not r.ok
 
+    def test_unknown_type_with_default_lists_all_allowed(self):
+        r = Result()
+        check_subject("unknown: add thing", r)
+        assert any(
+            "allowed: " in m and "feat" in m and "fix" in m for _, _, m in r.errors
+        )
+
+    def test_unknown_type_with_smaller_set_lists_them(self):
+        r = Result()
+        check_subject("foo: add thing", r, allowed_types=frozenset({"feat", "fix"}))
+        assert any("allowed: feat, fix" in m for _, _, m in r.errors)
+
+    def test_unknown_type_with_larger_than_default_points_at_config(self):
+        r = Result()
+        oversized = frozenset({f"t{i}" for i in range(20)})
+        check_subject("foo: add thing", r, allowed_types=oversized)
+        assert any("see configured types" in m for _, _, m in r.errors)
+        assert not any("allowed:" in m for _, _, m in r.errors)
+
     def test_uppercase_description(self):
         r = Result()
         check_subject("fix: Add token", r)
@@ -183,6 +202,22 @@ class TestCheckSubject:
         r = Result()
         check_subject("fix(api): add token", r, allowed_scopes=frozenset(["auth"]))
         assert not r.ok
+
+    def test_unknown_scope_with_small_set_lists_them(self):
+        r = Result()
+        check_subject(
+            "fix(api): add token",
+            r,
+            allowed_scopes=frozenset({"auth", "db"}),
+        )
+        assert any("allowed: auth, db" in m for _, _, m in r.errors)
+
+    def test_unknown_scope_with_larger_than_default_points_at_config(self):
+        r = Result()
+        oversized = frozenset({f"s{i}" for i in range(20)})
+        check_subject("fix(foo): add token", r, allowed_scopes=oversized)
+        assert any("see configured scopes" in m for _, _, m in r.errors)
+        assert not any("allowed:" in m for _, _, m in r.errors)
 
     def test_no_scope_with_allowlist_passes(self):
         r = Result()
@@ -324,6 +359,11 @@ class TestCheckSignedOff:
         r = Result()
         check_signed_off("fix: add thing\n\nbody", r)
         assert not r.ok
+
+    def test_missing_message_hints_at_git_commit_dash_s(self):
+        r = Result()
+        check_signed_off("fix: add thing\n\nbody", r)
+        assert any("git commit -s" in m for _, _, m in r.errors)
 
     def test_malformed_no_email(self):
         r = Result()
