@@ -816,6 +816,79 @@ class TestCheckSignature:
         assert not r.ok
         assert any("not found on GitHub" in msg for _, _, msg in r.errors)
 
+    def test_commits_api_404_without_token_hints_at_token(self):
+        r = Result()
+        env = {
+            k: v for k, v in os.environ.items() if k not in ("GITHUB_TOKEN", "GH_TOKEN")
+        }
+        with (
+            patch(
+                "git_commit_guard._get_author_email", return_value="user@example.com"
+            ),
+            patch(
+                "git_commit_guard._get_github_remote_info",
+                return_value=("owner", "repo"),
+            ),
+            patch(
+                "git_commit_guard._fetch_github_commit_author",
+                side_effect=urllib.error.HTTPError(
+                    url="", code=404, msg="Not Found", hdrs=None, fp=None
+                ),
+            ),
+            patch("git_commit_guard._fetch_github_username", return_value=None),
+            patch.dict("os.environ", env, clear=True),
+        ):
+            check_signature("abc123", r)
+        assert not r.ok
+        assert any("set GITHUB_TOKEN" in msg for _, _, msg in r.errors)
+
+    def test_commits_api_404_with_token_keeps_generic_message(self):
+        r = Result()
+        with (
+            patch(
+                "git_commit_guard._get_author_email", return_value="user@example.com"
+            ),
+            patch(
+                "git_commit_guard._get_github_remote_info",
+                return_value=("owner", "repo"),
+            ),
+            patch(
+                "git_commit_guard._fetch_github_commit_author",
+                side_effect=urllib.error.HTTPError(
+                    url="", code=404, msg="Not Found", hdrs=None, fp=None
+                ),
+            ),
+            patch("git_commit_guard._fetch_github_username", return_value=None),
+            patch.dict("os.environ", {"GITHUB_TOKEN": "x"}, clear=False),
+        ):
+            check_signature("abc123", r)
+        assert not r.ok
+        assert not any("set GITHUB_TOKEN" in msg for _, _, msg in r.errors)
+        assert any("cannot verify signature" in msg for _, _, msg in r.errors)
+
+    def test_commits_api_non_404_http_error_falls_through(self):
+        r = Result()
+        with (
+            patch(
+                "git_commit_guard._get_author_email", return_value="user@example.com"
+            ),
+            patch(
+                "git_commit_guard._get_github_remote_info",
+                return_value=("owner", "repo"),
+            ),
+            patch(
+                "git_commit_guard._fetch_github_commit_author",
+                side_effect=urllib.error.HTTPError(
+                    url="", code=500, msg="Server Error", hdrs=None, fp=None
+                ),
+            ),
+            patch("git_commit_guard._fetch_github_username", return_value="emailuser"),
+            patch("git_commit_guard._fetch_github_keys", return_value=("GPG KEY", "")),
+            patch("git_commit_guard._verify_gpg", return_value=True),
+        ):
+            check_signature("abc123", r)
+        assert r.ok
+
     def test_url_error_fails(self):
         r = Result()
         with patch(
