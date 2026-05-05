@@ -203,6 +203,22 @@ class TestCheckSubject:
         check_subject("fix(api): add token", r, allowed_scopes=frozenset(["auth"]))
         assert not r.ok
 
+    def test_unknown_scope_with_small_set_lists_them(self):
+        r = Result()
+        check_subject(
+            "fix(api): add token",
+            r,
+            allowed_scopes=frozenset({"auth", "db"}),
+        )
+        assert any("allowed: auth, db" in m for _, _, m in r.errors)
+
+    def test_unknown_scope_with_larger_than_default_points_at_config(self):
+        r = Result()
+        oversized = frozenset({f"s{i}" for i in range(20)})
+        check_subject("fix(foo): add token", r, allowed_scopes=oversized)
+        assert any("see configured scopes" in m for _, _, m in r.errors)
+        assert not any("allowed:" in m for _, _, m in r.errors)
+
     def test_no_scope_with_allowlist_passes(self):
         r = Result()
         check_subject("fix: add token", r, allowed_scopes=frozenset(["auth"]))

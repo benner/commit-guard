@@ -192,7 +192,8 @@ def check_subject(  # noqa: PLR0913 Too many arguments in function definition (9
     if require_scope and scope is None:
         result.error("scope is required", check=Check.SUBJECT)
     if allowed_scopes and scope is not None and scope not in allowed_scopes:
-        result.error(f"unknown scope: {scope}", check=Check.SUBJECT)
+        hint = _format_allowed_hint(allowed_scopes, "scopes")
+        result.error(f"unknown scope: {scope} {hint}", check=Check.SUBJECT)
 
     desc = m.group("desc")
     if require_lowercase and desc[0].isupper():
