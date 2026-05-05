@@ -124,6 +124,25 @@ class TestCheckSubject:
         check_subject("unknown: add thing", r)
         assert not r.ok
 
+    def test_unknown_type_with_default_lists_all_allowed(self):
+        r = Result()
+        check_subject("unknown: add thing", r)
+        assert any(
+            "allowed: " in m and "feat" in m and "fix" in m for _, _, m in r.errors
+        )
+
+    def test_unknown_type_with_smaller_set_lists_them(self):
+        r = Result()
+        check_subject("foo: add thing", r, allowed_types=frozenset({"feat", "fix"}))
+        assert any("allowed: feat, fix" in m for _, _, m in r.errors)
+
+    def test_unknown_type_with_larger_than_default_points_at_config(self):
+        r = Result()
+        oversized = frozenset({f"t{i}" for i in range(20)})
+        check_subject("foo: add thing", r, allowed_types=oversized)
+        assert any("see configured types" in m for _, _, m in r.errors)
+        assert not any("allowed:" in m for _, _, m in r.errors)
+
     def test_uppercase_description(self):
         r = Result()
         check_subject("fix: Add token", r)

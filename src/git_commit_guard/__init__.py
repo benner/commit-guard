@@ -151,6 +151,12 @@ def _download_if_missing(resource):
         nltk.download(resource.rsplit("/", maxsplit=1)[-1], quiet=True)
 
 
+def _format_allowed_hint(allowed, kind):
+    if len(allowed) <= len(TYPES):
+        return f"(allowed: {', '.join(sorted(allowed))})"
+    return f"(see configured {kind})"
+
+
 def _strip_comments(message):
     return "\n".join(
         line for line in message.split("\n") if not line.lstrip().startswith("#")
@@ -178,7 +184,9 @@ def check_subject(  # noqa: PLR0913 Too many arguments in function definition (9
         return None
 
     if m.group("type") not in allowed_types:
-        result.error(f"unknown type: {m.group('type')}", check=Check.SUBJECT)
+        bad_type = m.group("type")
+        hint = _format_allowed_hint(allowed_types, "types")
+        result.error(f"unknown type: {bad_type} {hint}", check=Check.SUBJECT)
 
     scope = m.group("scope")
     if require_scope and scope is None:
