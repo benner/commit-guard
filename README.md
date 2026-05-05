@@ -9,9 +9,16 @@
 
 Opinionated conventional commit message linter with imperative mood detection.
 
-Unlike regular expression only tools, commit-guard uses
-NLP (nltk POS tagging) to verify that commit descriptions start with an
-imperative verb.
+## Why commit-guard?
+
+* **NLP imperative detection.** Descriptions must start with an imperative
+  verb, verified via nltk POS tagging — not a hand-coded regex of "bad"
+  words.
+* **Signature verification without a local keyring.** Resolves the commit
+  author via the GitHub API and verifies GPG/SSH against their published
+  `.gpg`/`.keys` — no per-runner key management.
+* **Strict by default.** Subject format, body, trailers, `Signed-off-by`,
+  and signature all enforced out of the box; opt out with `--disable`.
 
 ## Example
 
