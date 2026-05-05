@@ -11,6 +11,7 @@ import urllib.request
 from argparse import ArgumentParser
 from dataclasses import dataclass, field
 from enum import StrEnum
+from http import HTTPStatus
 from pathlib import Path
 
 import nltk
@@ -387,22 +388,44 @@ def _verify_ssh(rev, email, ssh_text):
         Path(signers_path).unlink(missing_ok=True)
 
 
+def _resolve_github_username(rev, email):
+    username = None
+    commits_api_404 = False
+    remote = _get_github_remote_info()
+    if remote:
+        owner, repo = remote
+        try:
+            username = _fetch_github_commit_author(owner, repo, rev)
+        except urllib.error.HTTPError as e:
+            if e.code == HTTPStatus.NOT_FOUND:
+                commits_api_404 = True
+        except (urllib.error.URLError, TimeoutError):
+            pass
+    if username is None:
+        username = _parse_noreply_username(email)
+    if username is None:
+        username = _fetch_github_username(email)
+    return username, commits_api_404
+
+
+def _author_not_found_message(commits_api_404):
+    had_token = bool(os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN"))
+    if commits_api_404 and not had_token:
+        return (
+            "commit author not found on GitHub — if the repo is private, "
+            "set GITHUB_TOKEN in the workflow step "
+            "(env: GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }})"
+        )
+    return "commit author not found on GitHub — cannot verify signature"
+
+
 def check_signature(rev, result):
     try:
         email = _get_author_email(rev)
-        username = None
-        remote = _get_github_remote_info()
-        if remote:
-            owner, repo = remote
-            with contextlib.suppress(urllib.error.URLError, TimeoutError):
-                username = _fetch_github_commit_author(owner, repo, rev)
-        if username is None:
-            username = _parse_noreply_username(email)
-        if username is None:
-            username = _fetch_github_username(email)
+        username, commits_api_404 = _resolve_github_username(rev, email)
         if username is None:
             result.error(
-                "commit author not found on GitHub — cannot verify signature",
+                _author_not_found_message(commits_api_404),
                 check=Check.SIGNATURE,
             )
             return
