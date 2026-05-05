@@ -1,5 +1,12 @@
 # commit-guard
 
+<!-- markdownlint-disable MD013 -->
+[![PyPI version](https://img.shields.io/pypi/v/git-commit-guard.svg)](https://pypi.org/project/git-commit-guard/)
+[![PyPI downloads](https://img.shields.io/pypi/dm/git-commit-guard.svg)](https://pypi.org/project/git-commit-guard/)
+[![CI](https://github.com/benner/commit-guard/actions/workflows/test.yml/badge.svg)](https://github.com/benner/commit-guard/actions/workflows/test.yml)
+[![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit&logoColor=white)](https://pre-commit.com/)
+<!-- markdownlint-restore -->
+
 Opinionated conventional commit message linter with imperative mood detection.
 
 Unlike regular expression only tools, commit-guard uses
