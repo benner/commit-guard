@@ -25,7 +25,7 @@ Opinionated conventional commit message linter with imperative mood detection.
 ```bash
 $ commit-guard
   ✗ [subject] subject does not match 'type(scope): description': WIP
-  ✗ [signed-off] missing 'Signed-off-by' trailer
+  ✗ [signed-off] missing 'Signed-off-by' trailer — use 'git commit -s'
   ✗ [signature] commit is not signed (GPG/SSH)
 ```
 
