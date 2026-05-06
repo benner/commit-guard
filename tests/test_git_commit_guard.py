@@ -929,6 +929,84 @@ class TestCheckSignature:
             check_signature("abc123", r)
         assert r.ok
 
+    def test_commits_api_401_surfaces_token_message(self):
+        r = Result()
+        with (
+            patch(
+                "git_commit_guard._get_author_email", return_value="user@example.com"
+            ),
+            patch(
+                "git_commit_guard._get_github_remote_info",
+                return_value=("owner", "repo"),
+            ),
+            patch(
+                "git_commit_guard._fetch_github_commit_author",
+                side_effect=urllib.error.HTTPError(
+                    url="", code=401, msg="Unauthorized", hdrs=None, fp=None
+                ),
+            ),
+        ):
+            check_signature("abc123", r)
+        assert not r.ok
+        assert any("rejected token (HTTP 401)" in msg for _, _, msg in r.errors)
+
+    def test_commits_api_403_surfaces_token_message(self):
+        r = Result()
+        with (
+            patch(
+                "git_commit_guard._get_author_email", return_value="user@example.com"
+            ),
+            patch(
+                "git_commit_guard._get_github_remote_info",
+                return_value=("owner", "repo"),
+            ),
+            patch(
+                "git_commit_guard._fetch_github_commit_author",
+                side_effect=urllib.error.HTTPError(
+                    url="", code=403, msg="Forbidden", hdrs=None, fp=None
+                ),
+            ),
+        ):
+            check_signature("abc123", r)
+        assert not r.ok
+        assert any("forbidden (HTTP 403)" in msg for _, _, msg in r.errors)
+
+    def test_search_api_403_surfaces_rate_limit_message(self):
+        r = Result()
+        with (
+            patch(
+                "git_commit_guard._get_author_email", return_value="corp@example.com"
+            ),
+            patch("git_commit_guard._get_github_remote_info", return_value=None),
+            patch(
+                "git_commit_guard._fetch_github_username",
+                side_effect=urllib.error.HTTPError(
+                    url="", code=403, msg="Forbidden", hdrs=None, fp=None
+                ),
+            ),
+        ):
+            check_signature("abc123", r)
+        assert not r.ok
+        assert any("forbidden (HTTP 403)" in msg for _, _, msg in r.errors)
+
+    def test_other_http_error_uses_generic_http_message(self):
+        r = Result()
+        with (
+            patch(
+                "git_commit_guard._get_author_email", return_value="corp@example.com"
+            ),
+            patch("git_commit_guard._get_github_remote_info", return_value=None),
+            patch(
+                "git_commit_guard._fetch_github_username",
+                side_effect=urllib.error.HTTPError(
+                    url="", code=500, msg="Server Error", hdrs=None, fp=None
+                ),
+            ),
+        ):
+            check_signature("abc123", r)
+        assert not r.ok
+        assert any("GitHub API error (HTTP 500)" in msg for _, _, msg in r.errors)
+
     def test_url_error_fails(self):
         r = Result()
         with patch(

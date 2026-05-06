@@ -411,6 +411,8 @@ def _resolve_github_username(rev, email):
         except urllib.error.HTTPError as e:
             if e.code == HTTPStatus.NOT_FOUND:
                 commits_api_404 = True
+            elif e.code in (HTTPStatus.UNAUTHORIZED, HTTPStatus.FORBIDDEN):
+                raise
         except (urllib.error.URLError, TimeoutError):
             pass
     if username is None:
@@ -454,6 +456,24 @@ def check_signature(rev, result):
             "git operation timed out — cannot verify signature",
             check=Check.SIGNATURE,
         )
+    except urllib.error.HTTPError as e:
+        if e.code == HTTPStatus.UNAUTHORIZED:
+            result.error(
+                "GitHub API rejected token (HTTP 401) — "
+                "GITHUB_TOKEN may be invalid or expired",
+                check=Check.SIGNATURE,
+            )
+        elif e.code == HTTPStatus.FORBIDDEN:
+            result.error(
+                "GitHub API forbidden (HTTP 403) — GITHUB_TOKEN may lack "
+                "'repo' scope, or you are unauthenticated and rate-limited",
+                check=Check.SIGNATURE,
+            )
+        else:
+            result.error(
+                f"GitHub API error (HTTP {e.code}) — cannot verify signature",
+                check=Check.SIGNATURE,
+            )
     except (urllib.error.URLError, TimeoutError):
         result.error(
             "GitHub API unreachable — cannot verify signature",
