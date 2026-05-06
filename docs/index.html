@@ -115,7 +115,7 @@
       .hero-terminal pre {
         margin: 0;
         font-size: 0.95rem;
-        width: 64ch;
+        width: 80ch;
         height: 12em;
         overflow: hidden;
       }
@@ -291,12 +291,10 @@
         <h1>commit-guard</h1>
         <p>Conventional commit linting with imperative mood detection.</p>
         <div class="hero-terminal">
-          <pre><code id="hero-code">$ commit-guard --range origin/main..HEAD
-<span class="c-dim">abc1234</span> feat: add user authentication
-  <span class="c-green">✓</span> all checks passed
-<span class="c-dim">def5678</span> wip: still working
-  <span class="c-red">✗</span> <span class="c-dim">[subject]</span> unknown type: wip
-  <span class="c-red">✗</span> <span class="c-dim">[body]</span> missing body</code></pre>
+          <pre><code id="hero-code">$ commit-guard
+  <span class="c-red">✗</span> <span class="c-dim">[subject]</span> subject does not match 'type(scope): description': WIP
+  <span class="c-red">✗</span> <span class="c-dim">[signed-off]</span> missing 'Signed-off-by' trailer — use 'git commit -s'
+  <span class="c-red">✗</span> <span class="c-dim">[signature]</span> commit is not signed (GPG/SSH)</code></pre>
         </div>
         <div class="hero-dots">
           <button class="hero-dot" data-i="0"></button>
@@ -618,16 +616,16 @@ require-subject-pattern = "[A-Z]+-[0-9]+"</code></pre>
       const EXAMPLES = [
         [
           ["$ commit-guard\n  ", null],
-          ["✗", "c-red"], [" [subject]", "c-dim"], [" unknown type: wip\n  ", null],
-          ["✗", "c-red"], [" [body]",    "c-dim"], [" missing body\n  ", null],
-          ["✗", "c-red"], [" [imperative]", "c-dim"], [" got 'added', want imperative verb", null],
+          ["✗", "c-red"], [" [subject]", "c-dim"], [" subject does not match 'type(scope): description': WIP\n  ", null],
+          ["✗", "c-red"], [" [signed-off]", "c-dim"], [" missing 'Signed-off-by' trailer — use 'git commit -s'\n  ", null],
+          ["✗", "c-red"], [" [signature]", "c-dim"], [" commit is not signed (GPG/SSH)", null],
         ],
         [
           ["$ commit-guard --range origin/main..HEAD\n", null],
           ["abc1234", "c-dim"], [" feat: add user authentication\n  ", null],
           ["✓", "c-green"], [" all checks passed\n", null],
-          ["def5678", "c-dim"], [" wip: still working\n  ", null],
-          ["✗", "c-red"], [" [subject]", "c-dim"], [" unknown type: wip\n  ", null],
+          ["def5678", "c-dim"], [" chore: added logging\n  ", null],
+          ["✗", "c-red"], [" [imperative]", "c-dim"], [" expected imperative verb, got 'added' (non-imperative suffix)\n  ", null],
           ["✗", "c-red"], [" [body]",    "c-dim"], [" missing body", null],
         ],
         [
