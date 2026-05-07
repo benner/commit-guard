@@ -58,6 +58,11 @@ inputs:
   output-file:
     description: Write JSONL results to this file path (text still goes to stdout)
     required: false
+  github-token:
+    description: GitHub token for Commits API access (signature check). Defaults to
+      the workflow's automatic token; override with a PAT for cross-repo lookups.
+    required: false
+    default: ${{ github.token }}
 outputs:
   output-file:
     description: Path to the JSONL output file (set only when output-file input is provided)
@@ -76,6 +81,7 @@ runs:
     - name: Run commit-guard
       id: run
       env:
+        GITHUB_TOKEN: ${{ inputs.github-token }}
         CG_REV: ${{ inputs.rev }}
         CG_RANGE: ${{ inputs.range }}
         CG_ENABLE: ${{ inputs.enable }}

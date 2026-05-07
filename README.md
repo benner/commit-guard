@@ -240,7 +240,9 @@ If the author cannot be resolved via either method, or the GitHub API is
 unreachable, the check fails with a clear error.
 
 For private repositories, set `GITHUB_TOKEN` or `GH_TOKEN` so the Commits API
-can authenticate.
+can authenticate. The official GitHub Action wires the workflow's automatic
+token via the `github-token` input, so no manual `env:` is required; override
+with a PAT only for cross-repo lookups.
 
 ### Configuration file
 
