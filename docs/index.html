@@ -474,7 +474,10 @@ require-subject-pattern = "[A-Z]+-[0-9]+"</code></pre>
           If the author cannot be resolved via either method, or the GitHub API
           is unreachable, the check fails with a clear error. For private
           repositories, set <code>GITHUB_TOKEN</code> or <code>GH_TOKEN</code>
-          so the Commits API can authenticate. Disable the
+          so the Commits API can authenticate. The official GitHub Action wires
+          the workflow's automatic token via the <code>github-token</code>
+          input, so no manual <code>env:</code> is required; override with a
+          PAT only for cross-repo lookups. Disable the
           <code>signature</code> check if GitHub API access is unavailable:
         </p>
         <pre><code class="language-bash">commit-guard --disable signature</code></pre>
