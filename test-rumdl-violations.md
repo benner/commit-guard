@@ -1,5 +1,7 @@
 # Test rumdl
 
+# Second top-level heading
+
 This file intentionally violates rumdl rules to verify the CI job reports them as inline GitHub annotations on this PR.
 
 ## Long line below
