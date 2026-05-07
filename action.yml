@@ -39,7 +39,8 @@ inputs:
     required: false
     default: 'false'
   no-trailing-chars:
-    description: Forbidden trailing characters, comma-separated (default '.', '!', '?', ' ')
+    description: Forbidden trailing characters, comma-separated (default '.', '!',
+      '?', ' ')
     required: false
   allow-empty:
     description: Exit 0 when --range yields no commits
@@ -65,7 +66,8 @@ inputs:
     default: ${{ github.token }}
 outputs:
   output-file:
-    description: Path to the JSONL output file (set only when output-file input is provided)
+    description: Path to the JSONL output file (set only when output-file input is
+      provided)
     value: ${{ steps.run.outputs.output-file }}
 runs:
   using: composite
