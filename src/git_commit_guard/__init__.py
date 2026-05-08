@@ -336,9 +336,21 @@ def _fetch_url(url):
         return resp.read().decode()
 
 
+def _fetch_github_signing_keys(username):
+    url = f"https://api.github.com/users/{username}/ssh_signing_keys"
+    headers = {"Accept": "application/vnd.github+json"}
+    token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    req = urllib.request.Request(url, headers=headers)  # noqa: S310 Audit URL open for permitted schemes
+    with urllib.request.urlopen(req, timeout=_git_timeout()) as resp:  # noqa: S310 Audit URL open for permitted schemes
+        data = json.loads(resp.read())
+    return "\n".join(item["key"] for item in data)
+
+
 def _fetch_github_keys(username):
     gpg = _fetch_url(f"https://github.com/{username}.gpg")
-    ssh = _fetch_url(f"https://github.com/{username}.keys")
+    ssh = _fetch_github_signing_keys(username)
     return gpg.strip(), ssh.strip()
 
 
@@ -450,7 +462,12 @@ def check_signature(rev, result):
         if _verify_ssh(rev, email, ssh_text):
             result.info("signature type: SSH", check=Check.SIGNATURE)
             return
-        result.error("commit is not signed (GPG/SSH)", check=Check.SIGNATURE)
+        result.error(
+            "signature could not be verified — commit may be unsigned, "
+            "or signed with a key not uploaded as a Signing key on "
+            "https://github.com/settings/keys",
+            check=Check.SIGNATURE,
+        )
     except subprocess.TimeoutExpired:
         result.error(
             "git operation timed out — cannot verify signature",

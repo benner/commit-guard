@@ -228,8 +228,10 @@ The `signature` check verifies the commit without any local keyring setup:
    `{username}@users.noreply.github.com`) — no API call needed.
 3. If neither of the above resolves a username, fall back to searching GitHub
    by the commit author's email.
-4. Fetch the resolved user's public keys from `github.com/{username}.gpg` and
-   `github.com/{username}.keys`.
+4. Fetch the resolved user's public keys from `github.com/{username}.gpg`
+   (GPG) and the `/users/{username}/ssh_signing_keys` API (SSH keys tagged
+   with the **Signing key** role). Auth-only SSH keys are deliberately not
+   accepted — this mirrors GitHub's "Verified" badge semantics.
 5. Try GPG verification: import the fetched key into a temporary keyring and
    run `git verify-commit`.
 6. Try SSH verification: write a temporary `allowed_signers` file and run
