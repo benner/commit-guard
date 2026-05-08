@@ -17,6 +17,7 @@ from git_commit_guard import (
     _ensure_nltk_data,
     _fetch_github_commit_author,
     _fetch_github_keys,
+    _fetch_github_signing_keys,
     _fetch_github_username,
     _fetch_url,
     _get_author_email,
@@ -735,10 +736,69 @@ class TestFetchGithubCommitAuthor:
         assert captured[0].get_header("Authorization") == "Bearer ghtoken"
 
 
+class TestFetchGithubSigningKeys:
+    def _mock_response(self, data):
+        mock_resp = MagicMock()
+        mock_resp.__enter__ = lambda s: s
+        mock_resp.__exit__ = MagicMock(return_value=False)
+        mock_resp.read.return_value = json.dumps(data).encode()
+        return mock_resp
+
+    def test_returns_keys_joined_by_newline(self):
+        resp = self._mock_response(
+            [{"key": "ssh-ed25519 AAAA"}, {"key": "ssh-rsa BBBB"}]
+        )
+        with patch("git_commit_guard.urllib.request.urlopen", return_value=resp):
+            assert (
+                _fetch_github_signing_keys("testuser")
+                == "ssh-ed25519 AAAA\nssh-rsa BBBB"
+            )
+
+    def test_empty_list_returns_empty_string(self):
+        resp = self._mock_response([])
+        with patch("git_commit_guard.urllib.request.urlopen", return_value=resp):
+            assert _fetch_github_signing_keys("testuser") == ""
+
+    def test_github_token_sent_in_header(self):
+        resp = self._mock_response([])
+        captured = []
+
+        def mock_urlopen(req, **_):
+            captured.append(req)
+            return resp
+
+        with (
+            patch("git_commit_guard.urllib.request.urlopen", side_effect=mock_urlopen),
+            patch.dict("os.environ", {"GITHUB_TOKEN": "mytoken"}, clear=False),
+        ):
+            _fetch_github_signing_keys("testuser")
+        assert captured[0].get_header("Authorization") == "Bearer mytoken"
+
+    def test_gh_token_used_when_github_token_absent(self):
+        resp = self._mock_response([])
+        captured = []
+
+        def mock_urlopen(req, **_):
+            captured.append(req)
+            return resp
+
+        env = {k: v for k, v in os.environ.items() if k != "GITHUB_TOKEN"}
+        env["GH_TOKEN"] = "ghtoken"  # noqa: S105 Possible hardcoded password assigned to: "GH_TOKEN"
+        with (
+            patch("git_commit_guard.urllib.request.urlopen", side_effect=mock_urlopen),
+            patch.dict("os.environ", env, clear=True),
+        ):
+            _fetch_github_signing_keys("testuser")
+        assert captured[0].get_header("Authorization") == "Bearer ghtoken"
+
+
 class TestFetchGithubKeys:
     def test_returns_gpg_and_ssh(self):
-        with patch(
-            "git_commit_guard._fetch_url", side_effect=["GPG KEY\n", "SSH KEY\n"]
+        with (
+            patch("git_commit_guard._fetch_url", return_value="GPG KEY\n"),
+            patch(
+                "git_commit_guard._fetch_github_signing_keys", return_value="SSH KEY\n"
+            ),
         ):
             gpg, ssh = _fetch_github_keys("testuser")
         assert gpg == "GPG KEY"

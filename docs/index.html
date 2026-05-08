@@ -464,8 +464,11 @@ require-subject-pattern = "[A-Z]+-[0-9]+"</code></pre>
           <li>If neither of the above resolves a username, fall back to
             searching GitHub by the commit author's email.</li>
           <li>Fetch the resolved user's public keys from
-            <code>github.com/{username}.gpg</code> and
-            <code>github.com/{username}.keys</code>.</li>
+            <code>github.com/{username}.gpg</code> (GPG) and
+            <code>/users/{username}/ssh_signing_keys</code> (SSH keys tagged
+            with the <strong>Signing key</strong> role). Auth-only SSH keys
+            are deliberately not accepted — this mirrors GitHub's
+            &ldquo;Verified&rdquo; badge semantics.</li>
           <li>Try GPG verification using a temporary keyring.</li>
           <li>Try SSH verification using a temporary <code>allowed_signers</code> file.</li>
           <li>Pass if any key verifies; fail if none do.</li>
