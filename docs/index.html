@@ -294,7 +294,9 @@
           <pre><code id="hero-code">$ commit-guard
   <span class="c-red">✗</span> <span class="c-dim">[subject]</span> subject does not match 'type(scope): description': WIP
   <span class="c-red">✗</span> <span class="c-dim">[signed-off]</span> missing 'Signed-off-by' trailer — use 'git commit -s'
-  <span class="c-red">✗</span> <span class="c-dim">[signature]</span> commit is not signed (GPG/SSH)</code></pre>
+  <span class="c-red">✗</span> <span class="c-dim">[signature]</span> signature could not be verified — commit may be
+                unsigned, or signed with a key not uploaded as a
+                Signing key on https://github.com/settings/keys</code></pre>
         </div>
         <div class="hero-dots">
           <button class="hero-dot" data-i="0"></button>
@@ -624,7 +626,7 @@ require-subject-pattern = "[A-Z]+-[0-9]+"</code></pre>
           ["$ commit-guard\n  ", null],
           ["✗", "c-red"], [" [subject]", "c-dim"], [" subject does not match 'type(scope): description': WIP\n  ", null],
           ["✗", "c-red"], [" [signed-off]", "c-dim"], [" missing 'Signed-off-by' trailer — use 'git commit -s'\n  ", null],
-          ["✗", "c-red"], [" [signature]", "c-dim"], [" commit is not signed (GPG/SSH)", null],
+          ["✗", "c-red"], [" [signature]", "c-dim"], [" signature could not be verified — commit may be\n                unsigned, or signed with a key not uploaded as a\n                Signing key on https://github.com/settings/keys", null],
         ],
         [
           ["$ commit-guard --range origin/main..HEAD\n", null],
