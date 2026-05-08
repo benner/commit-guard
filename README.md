@@ -26,7 +26,9 @@ Opinionated conventional commit message linter with imperative mood detection.
 $ commit-guard
   ✗ [subject] subject does not match 'type(scope): description': WIP
   ✗ [signed-off] missing 'Signed-off-by' trailer — use 'git commit -s'
-  ✗ [signature] commit is not signed (GPG/SSH)
+  ✗ [signature] signature could not be verified — commit may be
+                unsigned, or signed with a key not uploaded as a
+                Signing key on https://github.com/settings/keys
 ```
 
 ## Installation
