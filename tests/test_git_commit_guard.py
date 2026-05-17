@@ -573,6 +573,39 @@ class TestCheckImperative:
         assert not r.ok
         assert "POS=NN" in r.errors[0][2]
 
+    def test_hyphen_re_prefix_verb_passes(self):
+        r = Result()
+        check_imperative("re-enable signature check", r)
+        assert r.ok
+
+    def test_hyphen_auto_prefix_verb_passes(self):
+        r = Result()
+        check_imperative("auto-detect format from header", r)
+        assert r.ok
+
+    def test_hyphen_pre_prefix_verb_passes(self):
+        r = Result()
+        check_imperative("pre-process input lines", r)
+        assert r.ok
+
+    def test_hyphen_unknown_prefix_fails(self):
+        # 'high' is not in the verb-forming prefix allowlist
+        r = Result()
+        check_imperative("high-level overview of foo", r)
+        assert not r.ok
+
+    def test_hyphen_non_verb_base_fails(self):
+        # 'in' is not a verb, so even though split shape matches, base check rejects
+        r = Result()
+        check_imperative("built-in helper function", r)
+        assert not r.ok
+
+    def test_hyphen_inflected_suffix_still_fails(self):
+        # Suffix check runs before hyphen escape — 're-running' caught by ing$
+        r = Result()
+        check_imperative("re-running the tests", r)
+        assert not r.ok
+
 
 class TestDownloadIfMissing:
     def test_skips_download_when_present(self):
