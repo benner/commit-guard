@@ -34,6 +34,15 @@ TYPES = frozenset(
 )
 
 _NON_IMPERATIVE_SUFFIX_RE = re.compile(r"(?:ing|ed)$")
+_VERB_FORMING_PREFIXES = frozenset(
+    {
+        "re",
+        "pre",
+        "auto",
+        "co",
+        "under",
+    }
+)
 _TRAILER_RE = re.compile(r"^[\w-]+:\s+\S")
 _GITHUB_REMOTE_RE = re.compile(
     r"github\.com[:/](?P<owner>[^/]+)/(?P<repo>[^/\s]+?)(?:\.git)?$"
@@ -235,6 +244,13 @@ def check_imperative(desc, result):
     if tagged[1][1] != "VB":
         if wordnet.morphy(first, wordnet.VERB) == first:
             return
+        if "-" in first:
+            hyphen_prefix, hyphen_base = first.split("-", 1)
+            if (
+                hyphen_prefix in _VERB_FORMING_PREFIXES
+                and wordnet.morphy(hyphen_base, wordnet.VERB) == hyphen_base
+            ):
+                return
         result.error(
             f"expected imperative verb, got '{tagged[1][0]}' (POS={tagged[1][1]})",
             check=Check.IMPERATIVE,
