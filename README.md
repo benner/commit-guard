@@ -482,11 +482,14 @@ To selectively enable or disable checks, pass `args`:
 
 ## Imperative mood detection
 
-commit-guard combines two strategies to detect non-imperative descriptions:
+commit-guard combines three strategies to detect non-imperative descriptions:
 
 1. nltk POS tagging — flags words tagged as past tense (`VBD`),
    gerund (`VBG`), third person (`VBZ`), etc.
 2. WordNet morphology as a fallback for words the tagger misclassifies.
+3. Hyphenated verb prefixes — accepts `re-enable`, `auto-detect`,
+   `pre-process`, `co-locate`, `under-mine` and similar
+   `<prefix>-<verb>` compounds the POS tagger misclassifies.
 
 This catches common mistakes like `added logging` or `fixes bug` while
 keeping false positives low.
