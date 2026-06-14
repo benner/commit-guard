@@ -16,7 +16,7 @@ classifiers = [
     "Topic :: Software Development :: Version Control :: Git",
 ]
 dependencies = [
-    "nltk>=3.9.3",
+    "nltk>=3.9.4",
 ]
 
 [project.scripts]
@@ -36,6 +36,6 @@ source = "vcs"
 
 [dependency-groups]
 dev = [
-    "pytest>=9.0.2",
+    "pytest>=9.0.3",
     "pytest-cov>=7.1.0",
 ]
