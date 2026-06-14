@@ -1,0 +1,22 @@
+---
+name: Security Audit
+on:  # yamllint disable-line rule:truthy
+  pull_request:
+  schedule:
+    - cron: 13 3 * * 2
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        # yamllint disable-line rule:line-length
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          persist-credentials: false
+      - name: Install uv
+        # yamllint disable-line rule:line-length
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78  # v7.6.0
+      - name: Audit dependencies
+        run: uv audit --frozen --preview-features audit-command
