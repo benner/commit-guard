@@ -295,9 +295,9 @@ def check_required_trailers(message, required, result):
             result.error(f"missing required trailer: {trailer}")
 
 
-def _get_author_email(rev):
+def _get_committer_email(rev):
     return subprocess.check_output(  # noqa: S603
-        ["git", "log", "-1", "--format=%ae", rev],  # noqa: S607
+        ["git", "log", "-1", "--format=%ce", rev],  # noqa: S607
         text=True,
         stderr=subprocess.PIPE,
         timeout=_git_timeout(),
@@ -320,7 +320,7 @@ def _get_github_remote_info():
     return match.group("owner"), match.group("repo")
 
 
-def _fetch_github_commit_author(owner, repo, sha):
+def _fetch_github_commit_committer(owner, repo, sha):
     url = f"https://api.github.com/repos/{owner}/{repo}/commits/{sha}"
     headers = {"Accept": "application/vnd.github+json"}
     token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")
@@ -329,8 +329,8 @@ def _fetch_github_commit_author(owner, repo, sha):
     req = urllib.request.Request(url, headers=headers)  # noqa: S310 Audit URL open for permitted schemes
     with urllib.request.urlopen(req, timeout=_git_timeout()) as resp:  # noqa: S310 Audit URL open for permitted schemes
         data = json.loads(resp.read())
-    author = data.get("author")
-    return author["login"] if author else None
+    committer = data.get("committer")
+    return committer["login"] if committer else None
 
 
 def _parse_noreply_username(email):
@@ -435,7 +435,7 @@ def _resolve_github_username(rev, email):
     if remote:
         owner, repo = remote
         try:
-            username = _fetch_github_commit_author(owner, repo, rev)
+            username = _fetch_github_commit_committer(owner, repo, rev)
         except urllib.error.HTTPError as e:
             if e.code == HTTPStatus.NOT_FOUND:
                 commits_api_404 = True
@@ -450,24 +450,24 @@ def _resolve_github_username(rev, email):
     return username, commits_api_404
 
 
-def _author_not_found_message(commits_api_404):
+def _committer_not_found_message(commits_api_404):
     had_token = bool(os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN"))
     if commits_api_404 and not had_token:
         return (
-            "commit author not found on GitHub — if the repo is private, "
+            "committer not found on GitHub — if the repo is private, "
             "set GITHUB_TOKEN in the workflow step "
             "(env: GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }})"
         )
-    return "commit author not found on GitHub — cannot verify signature"
+    return "committer not found on GitHub — cannot verify signature"
 
 
 def check_signature(rev, result):
     try:
-        email = _get_author_email(rev)
+        email = _get_committer_email(rev)
         username, commits_api_404 = _resolve_github_username(rev, email)
         if username is None:
             result.error(
-                _author_not_found_message(commits_api_404),
+                _committer_not_found_message(commits_api_404),
                 check=Check.SIGNATURE,
             )
             return

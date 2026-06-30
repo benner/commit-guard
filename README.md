@@ -15,7 +15,7 @@ Opinionated conventional commit message linter with imperative mood detection.
   verb, verified via nltk POS tagging — not a hand-coded regex of "bad"
   words.
 * **Signature verification without a local keyring.** Resolves the commit
-  author via the GitHub API and verifies GPG/SSH against their published
+  committer via the GitHub API and verifies GPG/SSH against their published
   `.gpg`/`.keys` — no per-runner key management.
 * **Strict by default.** Subject format, body, trailers, `Signed-off-by`,
   and signature all enforced out of the box; opt out with `--disable`.
@@ -221,7 +221,7 @@ independently of `--enable`/`--disable`.
 The `signature` check verifies the commit without any local keyring setup:
 
 1. If the repo has a GitHub remote, call the Commits API
-   (`GET /repos/{owner}/{repo}/commits/{sha}`) to resolve the author's GitHub
+   (`GET /repos/{owner}/{repo}/commits/{sha}`) to resolve the committer's GitHub
    username — this works for corporate emails, noreply addresses, or any email
    not listed publicly on a GitHub profile.
 2. If the Commits API is unavailable (no GitHub remote, commit not yet pushed,
@@ -229,7 +229,7 @@ The `signature` check verifies the commit without any local keyring setup:
    (`{id}+{username}@users.noreply.github.com` or
    `{username}@users.noreply.github.com`) — no API call needed.
 3. If neither of the above resolves a username, fall back to searching GitHub
-   by the commit author's email.
+   by the commit committer's email.
 4. Fetch the resolved user's public keys from `github.com/{username}.gpg`
    (GPG) and the `/users/{username}/ssh_signing_keys` API (SSH keys tagged
    with the **Signing key** role). Auth-only SSH keys are deliberately not
@@ -240,7 +240,7 @@ The `signature` check verifies the commit without any local keyring setup:
    `git verify-commit` with the SSH allowed-signers config.
 7. If any key verifies, the check passes. If none do, it fails.
 
-If the author cannot be resolved via either method, or the GitHub API is
+If the committer cannot be resolved via either method, or the GitHub API is
 unreachable, the check fails with a clear error.
 
 For private repositories, set `GITHUB_TOKEN` or `GH_TOKEN` so the Commits API

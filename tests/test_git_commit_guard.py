@@ -15,12 +15,12 @@ from git_commit_guard import (
     Result,
     _download_if_missing,
     _ensure_nltk_data,
-    _fetch_github_commit_author,
+    _fetch_github_commit_committer,
     _fetch_github_keys,
     _fetch_github_signing_keys,
     _fetch_github_username,
     _fetch_url,
-    _get_author_email,
+    _get_committer_email,
     _get_github_remote_info,
     _get_message,
     _get_range_revs,
@@ -625,13 +625,14 @@ class TestDownloadIfMissing:
         mock_dl.assert_called_once_with("punkt_tab", quiet=True)
 
 
-class TestGetAuthorEmail:
+class TestGetCommitterEmail:
     def test_returns_stripped_email(self):
         with patch(
             "git_commit_guard.subprocess.check_output",
             return_value="user@example.com\n",
-        ):
-            assert _get_author_email("abc123") == "user@example.com"
+        ) as mock_check:
+            assert _get_committer_email("abc123") == "user@example.com"
+        assert "--format=%ce" in mock_check.call_args.args[0]
 
 
 class TestFetchUrl:
@@ -716,7 +717,7 @@ class TestGetGithubRemoteInfo:
             assert _get_github_remote_info() is None
 
 
-class TestFetchGithubCommitAuthor:
+class TestFetchGithubCommitCommitter:
     def _mock_response(self, data):
         mock_resp = MagicMock()
         mock_resp.__enter__ = lambda s: s
@@ -724,20 +725,31 @@ class TestFetchGithubCommitAuthor:
         mock_resp.read.return_value = json.dumps(data).encode()
         return mock_resp
 
-    def test_returns_author_login(self):
-        resp = self._mock_response({"author": {"login": "commituser"}})
+    def test_returns_committer_login(self):
+        resp = self._mock_response({"committer": {"login": "commituser"}})
         with patch("git_commit_guard.urllib.request.urlopen", return_value=resp):
             assert (
-                _fetch_github_commit_author("owner", "repo", "abc123") == "commituser"
+                _fetch_github_commit_committer("owner", "repo", "abc123")
+                == "commituser"
             )
 
-    def test_null_author_returns_none(self):
-        resp = self._mock_response({"author": None})
+    def test_returns_committer_login_not_author(self):
+        resp = self._mock_response(
+            {"author": {"login": "the-author"}, "committer": {"login": "the-committer"}}
+        )
         with patch("git_commit_guard.urllib.request.urlopen", return_value=resp):
-            assert _fetch_github_commit_author("owner", "repo", "abc123") is None
+            assert (
+                _fetch_github_commit_committer("owner", "repo", "abc123")
+                == "the-committer"
+            )
+
+    def test_null_committer_returns_none(self):
+        resp = self._mock_response({"committer": None})
+        with patch("git_commit_guard.urllib.request.urlopen", return_value=resp):
+            assert _fetch_github_commit_committer("owner", "repo", "abc123") is None
 
     def test_github_token_sent_in_header(self):
-        resp = self._mock_response({"author": {"login": "user"}})
+        resp = self._mock_response({"committer": {"login": "user"}})
         captured = []
 
         def mock_urlopen(req, **_):
@@ -748,11 +760,11 @@ class TestFetchGithubCommitAuthor:
             patch("git_commit_guard.urllib.request.urlopen", side_effect=mock_urlopen),
             patch.dict("os.environ", {"GITHUB_TOKEN": "mytoken"}, clear=False),
         ):
-            _fetch_github_commit_author("owner", "repo", "abc123")
+            _fetch_github_commit_committer("owner", "repo", "abc123")
         assert captured[0].get_header("Authorization") == "Bearer mytoken"
 
     def test_gh_token_used_when_github_token_absent(self):
-        resp = self._mock_response({"author": {"login": "user"}})
+        resp = self._mock_response({"committer": {"login": "user"}})
         captured = []
 
         def mock_urlopen(req, **_):
@@ -765,7 +777,7 @@ class TestFetchGithubCommitAuthor:
             patch("git_commit_guard.urllib.request.urlopen", side_effect=mock_urlopen),
             patch.dict("os.environ", env, clear=True),
         ):
-            _fetch_github_commit_author("owner", "repo", "abc123")
+            _fetch_github_commit_committer("owner", "repo", "abc123")
         assert captured[0].get_header("Authorization") == "Bearer ghtoken"
 
 
@@ -894,7 +906,7 @@ class TestCheckSignature:
         r = Result()
         with (
             patch(
-                "git_commit_guard._get_author_email", return_value="user@example.com"
+                "git_commit_guard._get_committer_email", return_value="user@example.com"
             ),
             patch("git_commit_guard._get_github_remote_info", return_value=None),
             patch("git_commit_guard._fetch_github_username", return_value="testuser"),
@@ -909,7 +921,7 @@ class TestCheckSignature:
         r = Result()
         with (
             patch(
-                "git_commit_guard._get_author_email", return_value="user@example.com"
+                "git_commit_guard._get_committer_email", return_value="user@example.com"
             ),
             patch("git_commit_guard._get_github_remote_info", return_value=None),
             patch("git_commit_guard._fetch_github_username", return_value="testuser"),
@@ -925,7 +937,7 @@ class TestCheckSignature:
         r = Result()
         with (
             patch(
-                "git_commit_guard._get_author_email", return_value="user@example.com"
+                "git_commit_guard._get_committer_email", return_value="user@example.com"
             ),
             patch("git_commit_guard._get_github_remote_info", return_value=None),
             patch("git_commit_guard._fetch_github_username", return_value="testuser"),
@@ -940,7 +952,7 @@ class TestCheckSignature:
         r = Result()
         with (
             patch(
-                "git_commit_guard._get_author_email", return_value="user@example.com"
+                "git_commit_guard._get_committer_email", return_value="user@example.com"
             ),
             patch("git_commit_guard._get_github_remote_info", return_value=None),
             patch("git_commit_guard._fetch_github_username", return_value=None),
@@ -956,14 +968,14 @@ class TestCheckSignature:
         }
         with (
             patch(
-                "git_commit_guard._get_author_email", return_value="user@example.com"
+                "git_commit_guard._get_committer_email", return_value="user@example.com"
             ),
             patch(
                 "git_commit_guard._get_github_remote_info",
                 return_value=("owner", "repo"),
             ),
             patch(
-                "git_commit_guard._fetch_github_commit_author",
+                "git_commit_guard._fetch_github_commit_committer",
                 side_effect=urllib.error.HTTPError(
                     url="", code=404, msg="Not Found", hdrs=None, fp=None
                 ),
@@ -979,14 +991,14 @@ class TestCheckSignature:
         r = Result()
         with (
             patch(
-                "git_commit_guard._get_author_email", return_value="user@example.com"
+                "git_commit_guard._get_committer_email", return_value="user@example.com"
             ),
             patch(
                 "git_commit_guard._get_github_remote_info",
                 return_value=("owner", "repo"),
             ),
             patch(
-                "git_commit_guard._fetch_github_commit_author",
+                "git_commit_guard._fetch_github_commit_committer",
                 side_effect=urllib.error.HTTPError(
                     url="", code=404, msg="Not Found", hdrs=None, fp=None
                 ),
@@ -1003,14 +1015,14 @@ class TestCheckSignature:
         r = Result()
         with (
             patch(
-                "git_commit_guard._get_author_email", return_value="user@example.com"
+                "git_commit_guard._get_committer_email", return_value="user@example.com"
             ),
             patch(
                 "git_commit_guard._get_github_remote_info",
                 return_value=("owner", "repo"),
             ),
             patch(
-                "git_commit_guard._fetch_github_commit_author",
+                "git_commit_guard._fetch_github_commit_committer",
                 side_effect=urllib.error.HTTPError(
                     url="", code=500, msg="Server Error", hdrs=None, fp=None
                 ),
@@ -1026,14 +1038,14 @@ class TestCheckSignature:
         r = Result()
         with (
             patch(
-                "git_commit_guard._get_author_email", return_value="user@example.com"
+                "git_commit_guard._get_committer_email", return_value="user@example.com"
             ),
             patch(
                 "git_commit_guard._get_github_remote_info",
                 return_value=("owner", "repo"),
             ),
             patch(
-                "git_commit_guard._fetch_github_commit_author",
+                "git_commit_guard._fetch_github_commit_committer",
                 side_effect=urllib.error.HTTPError(
                     url="", code=401, msg="Unauthorized", hdrs=None, fp=None
                 ),
@@ -1047,14 +1059,14 @@ class TestCheckSignature:
         r = Result()
         with (
             patch(
-                "git_commit_guard._get_author_email", return_value="user@example.com"
+                "git_commit_guard._get_committer_email", return_value="user@example.com"
             ),
             patch(
                 "git_commit_guard._get_github_remote_info",
                 return_value=("owner", "repo"),
             ),
             patch(
-                "git_commit_guard._fetch_github_commit_author",
+                "git_commit_guard._fetch_github_commit_committer",
                 side_effect=urllib.error.HTTPError(
                     url="", code=403, msg="Forbidden", hdrs=None, fp=None
                 ),
@@ -1068,7 +1080,7 @@ class TestCheckSignature:
         r = Result()
         with (
             patch(
-                "git_commit_guard._get_author_email", return_value="corp@example.com"
+                "git_commit_guard._get_committer_email", return_value="corp@example.com"
             ),
             patch("git_commit_guard._get_github_remote_info", return_value=None),
             patch(
@@ -1086,7 +1098,7 @@ class TestCheckSignature:
         r = Result()
         with (
             patch(
-                "git_commit_guard._get_author_email", return_value="corp@example.com"
+                "git_commit_guard._get_committer_email", return_value="corp@example.com"
             ),
             patch("git_commit_guard._get_github_remote_info", return_value=None),
             patch(
@@ -1103,7 +1115,7 @@ class TestCheckSignature:
     def test_url_error_fails(self):
         r = Result()
         with patch(
-            "git_commit_guard._get_author_email",
+            "git_commit_guard._get_committer_email",
             side_effect=urllib.error.URLError("unreachable"),
         ):
             check_signature("abc123", r)
@@ -1112,7 +1124,7 @@ class TestCheckSignature:
 
     def test_timeout_error_fails(self):
         r = Result()
-        with patch("git_commit_guard._get_author_email", side_effect=TimeoutError()):
+        with patch("git_commit_guard._get_committer_email", side_effect=TimeoutError()):
             check_signature("abc123", r)
         assert not r.ok
         assert any("API unreachable" in msg for _, _, msg in r.errors)
@@ -1120,7 +1132,7 @@ class TestCheckSignature:
     def test_subprocess_timeout_fails_gracefully(self):
         r = Result()
         with patch(
-            "git_commit_guard._get_author_email",
+            "git_commit_guard._get_committer_email",
             side_effect=subprocess.TimeoutExpired(cmd="git", timeout=10),
         ):
             check_signature("abc123", r)
@@ -1131,14 +1143,15 @@ class TestCheckSignature:
         r = Result()
         with (
             patch(
-                "git_commit_guard._get_author_email", return_value="corp@example.com"
+                "git_commit_guard._get_committer_email", return_value="corp@example.com"
             ),
             patch(
                 "git_commit_guard._get_github_remote_info",
                 return_value=("owner", "repo"),
             ),
             patch(
-                "git_commit_guard._fetch_github_commit_author", return_value="corpuser"
+                "git_commit_guard._fetch_github_commit_committer",
+                return_value="corpuser",
             ),
             patch("git_commit_guard._fetch_github_username") as mock_email_search,
             patch("git_commit_guard._fetch_github_keys", return_value=("GPG KEY", "")),
@@ -1152,14 +1165,14 @@ class TestCheckSignature:
         r = Result()
         with (
             patch(
-                "git_commit_guard._get_author_email", return_value="corp@example.com"
+                "git_commit_guard._get_committer_email", return_value="corp@example.com"
             ),
             patch(
                 "git_commit_guard._get_github_remote_info",
                 return_value=("owner", "repo"),
             ),
             patch(
-                "git_commit_guard._fetch_github_commit_author",
+                "git_commit_guard._fetch_github_commit_committer",
                 side_effect=urllib.error.URLError("not found"),
             ),
             patch("git_commit_guard._fetch_github_username", return_value="emailuser"),
@@ -1169,17 +1182,17 @@ class TestCheckSignature:
             check_signature("abc123", r)
         assert r.ok
 
-    def test_commits_api_null_author_falls_back_to_email_search(self):
+    def test_commits_api_null_committer_falls_back_to_email_search(self):
         r = Result()
         with (
             patch(
-                "git_commit_guard._get_author_email", return_value="user@example.com"
+                "git_commit_guard._get_committer_email", return_value="user@example.com"
             ),
             patch(
                 "git_commit_guard._get_github_remote_info",
                 return_value=("owner", "repo"),
             ),
-            patch("git_commit_guard._fetch_github_commit_author", return_value=None),
+            patch("git_commit_guard._fetch_github_commit_committer", return_value=None),
             patch("git_commit_guard._fetch_github_username", return_value="emailuser"),
             patch("git_commit_guard._fetch_github_keys", return_value=("", "SSH KEY")),
             patch("git_commit_guard._verify_gpg", return_value=False),
@@ -1192,10 +1205,12 @@ class TestCheckSignature:
         r = Result()
         with (
             patch(
-                "git_commit_guard._get_author_email", return_value="user@example.com"
+                "git_commit_guard._get_committer_email", return_value="user@example.com"
             ),
             patch("git_commit_guard._get_github_remote_info", return_value=None),
-            patch("git_commit_guard._fetch_github_commit_author") as mock_commits_api,
+            patch(
+                "git_commit_guard._fetch_github_commit_committer"
+            ) as mock_commits_api,
             patch("git_commit_guard._fetch_github_username", return_value="emailuser"),
             patch("git_commit_guard._fetch_github_keys", return_value=("GPG KEY", "")),
             patch("git_commit_guard._verify_gpg", return_value=True),
@@ -1208,7 +1223,7 @@ class TestCheckSignature:
         r = Result()
         with (
             patch(
-                "git_commit_guard._get_author_email",
+                "git_commit_guard._get_committer_email",
                 return_value="12345678+alice@users.noreply.github.com",
             ),
             patch("git_commit_guard._get_github_remote_info", return_value=None),
@@ -1224,7 +1239,7 @@ class TestCheckSignature:
         r = Result()
         with (
             patch(
-                "git_commit_guard._get_author_email",
+                "git_commit_guard._get_committer_email",
                 return_value="12345678+alice@users.noreply.github.com",
             ),
             patch(
@@ -1232,7 +1247,7 @@ class TestCheckSignature:
                 return_value=("owner", "repo"),
             ),
             patch(
-                "git_commit_guard._fetch_github_commit_author",
+                "git_commit_guard._fetch_github_commit_committer",
                 side_effect=urllib.error.URLError("not found"),
             ),
             patch("git_commit_guard._fetch_github_username") as mock_email_search,
@@ -1630,7 +1645,7 @@ class TestMain:
             patch("sys.argv", ["cg", "abc123", "--enable", "signature"]),
             patch("git_commit_guard._get_message", return_value=_VALID_MSG),
             patch(
-                "git_commit_guard._get_author_email", return_value="user@example.com"
+                "git_commit_guard._get_committer_email", return_value="user@example.com"
             ),
             patch("git_commit_guard._get_github_remote_info", return_value=None),
             patch("git_commit_guard._fetch_github_username", return_value="testuser"),
