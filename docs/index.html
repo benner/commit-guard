@@ -315,7 +315,7 @@
           </li>
           <li>
             <strong>Signature verification without a local keyring.</strong>
-            Resolves the commit author via the GitHub API and verifies GPG/SSH
+            Resolves the commit committer via the GitHub API and verifies GPG/SSH
             against their published <code>.gpg</code>/<code>.keys</code> — no
             per-runner key management.
           </li>
@@ -456,7 +456,7 @@ require-subject-pattern = "[A-Z]+-[0-9]+"</code></pre>
         <ol>
           <li>If the repo has a GitHub remote, call the Commits API
             (<code>GET /repos/{owner}/{repo}/commits/{sha}</code>) to resolve
-            the author's GitHub username — works for corporate emails, noreply
+            the committer's GitHub username — works for corporate emails, noreply
             addresses, or any email not listed publicly on a GitHub profile.</li>
           <li>If the Commits API is unavailable (no GitHub remote, commit not
             yet pushed, or API error), parse the username directly from a
@@ -464,7 +464,7 @@ require-subject-pattern = "[A-Z]+-[0-9]+"</code></pre>
             (<code>{id}+{username}@users.noreply.github.com</code>) — no API
             call needed.</li>
           <li>If neither of the above resolves a username, fall back to
-            searching GitHub by the commit author's email.</li>
+            searching GitHub by the commit committer's email.</li>
           <li>Fetch the resolved user's public keys from
             <code>github.com/{username}.gpg</code> (GPG) and
             <code>/users/{username}/ssh_signing_keys</code> (SSH keys tagged
@@ -476,7 +476,7 @@ require-subject-pattern = "[A-Z]+-[0-9]+"</code></pre>
           <li>Pass if any key verifies; fail if none do.</li>
         </ol>
         <p>
-          If the author cannot be resolved via either method, or the GitHub API
+          If the committer cannot be resolved via either method, or the GitHub API
           is unreachable, the check fails with a clear error. For private
           repositories, set <code>GITHUB_TOKEN</code> or <code>GH_TOKEN</code>
           so the Commits API can authenticate. The official GitHub Action wires
