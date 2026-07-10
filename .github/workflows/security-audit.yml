@@ -3,7 +3,7 @@ name: Security Audit
 on:  # yamllint disable-line rule:truthy
   pull_request:
   schedule:
-    - cron: 13 3 * * 2
+    - cron: 13 3 * * *
 permissions:
   contents: read
 jobs:
