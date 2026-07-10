@@ -19,6 +19,4 @@ jobs:
         # yamllint disable-line rule:line-length
         uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39  # v8.2.0
       - name: Audit dependencies
-        run: >-
-          uv audit --frozen --preview-features audit-command
-          --ignore-until-fixed GHSA-p4gq-832x-fm9v
+        run: uv audit --frozen --preview-features audit-command
