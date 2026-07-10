@@ -12,6 +12,7 @@ from git_commit_guard import (
     GIT_TIMEOUT,
     MAX_SUBJECT_LEN,
     TYPES,
+    OutputFormat,
     Result,
     _download_if_missing,
     _ensure_nltk_data,
@@ -29,6 +30,7 @@ from git_commit_guard import (
     _parse_checks,
     _parse_config_checks,
     _parse_noreply_username,
+    _report_commit,
     _report_jsonl,
     _report_text,
     _resolve_max_subject_length,
@@ -1543,6 +1545,34 @@ class TestReportJsonl:
         _report_jsonl(r, "abc", "fix: add thing")
         out = capsys.readouterr().out
         assert out.count("\n") == 1
+
+
+class TestReportCommit:
+    def test_range_text_prints_sha_header(self, capsys):
+        args = Namespace(output=OutputFormat.TEXT, rev_range="a..b")
+        ret = _report_commit(args, Result(), "abc1234567890", "fix: add thing")
+        assert ret == 0
+        out = capsys.readouterr().out
+        assert out.startswith("abc1234 fix: add thing")
+        assert "all checks passed" in out
+
+    def test_single_commit_text_has_no_header(self, capsys):
+        args = Namespace(output=OutputFormat.TEXT, rev_range=None)
+        ret = _report_commit(args, Result(), None, "fix: add thing")
+        assert ret == 0
+        out = capsys.readouterr().out
+        assert "fix: add thing" not in out
+        assert "all checks passed" in out
+
+    def test_jsonl_dispatch(self, capsys):
+        args = Namespace(output=OutputFormat.JSONL, rev_range="a..b")
+        r = Result()
+        r.error("missing body", check="body")
+        ret = _report_commit(args, r, "abc1234567890", "fix: add thing")
+        assert ret == 1
+        data = json.loads(capsys.readouterr().out)
+        assert data["sha"] == "abc1234567890"
+        assert data["ok"] is False
 
 
 _VALID_MSG = "fix: add thing\n\nbody text\n\nSigned-off-by: A User <a@b.com>"

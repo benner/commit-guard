@@ -892,6 +892,14 @@ def _run_checks(args, rev, message, result):
         check_signature(rev, result)
 
 
+def _report_commit(args, result, sha, subject):
+    if args.output == OutputFormat.JSONL:
+        return _report_jsonl(result, sha, subject)
+    if args.rev_range:
+        print(f"{sha[:7]} {subject}")
+    return _report_text(result)
+
+
 def main():
     args = _parse_args()
 
@@ -911,13 +919,8 @@ def main():
                 subject = message.split("\n")[0]
                 result = Result()
                 _run_checks(args, rev, message, result)
-                if args.output == OutputFormat.JSONL:
-                    if _report_jsonl(result, rev, subject) != 0:
-                        failed = True
-                else:
-                    print(f"{rev[:7]} {subject}")
-                    if _report_text(result) != 0:
-                        failed = True
+                if _report_commit(args, result, rev, subject) != 0:
+                    failed = True
                 if out_file:
                     _write_jsonl_record(result, rev, subject, out_file)
             return 1 if failed else 0
@@ -927,6 +930,4 @@ def main():
         _run_checks(args, args.rev, args.message, result)
         if out_file:
             _write_jsonl_record(result, args.rev, subject, out_file)
-        if args.output == OutputFormat.JSONL:
-            return _report_jsonl(result, args.rev, subject)
-        return _report_text(result)
+        return _report_commit(args, result, args.rev, subject)
