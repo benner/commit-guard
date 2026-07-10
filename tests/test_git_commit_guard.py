@@ -12,6 +12,7 @@ from git_commit_guard import (
     GIT_TIMEOUT,
     MAX_SUBJECT_LEN,
     TYPES,
+    OutputFormat,
     Result,
     _download_if_missing,
     _ensure_nltk_data,
@@ -29,6 +30,7 @@ from git_commit_guard import (
     _parse_checks,
     _parse_config_checks,
     _parse_noreply_username,
+    _report_commit,
     _report_jsonl,
     _report_text,
     _resolve_max_subject_length,
@@ -1493,6 +1495,33 @@ class TestReport:
             _report_text(r)
         assert "\033[" not in capsys.readouterr().out
 
+    def test_quiet_suppresses_clean_result(self, capsys):
+        r = Result()
+        ret = _report_text(r, quiet=True)
+        assert ret == 0
+        assert capsys.readouterr().out == ""
+
+    def test_quiet_suppresses_info_only_result(self, capsys):
+        r = Result()
+        r.info("signature type: SSH", check="signature")
+        ret = _report_text(r, quiet=True)
+        assert ret == 0
+        assert capsys.readouterr().out == ""
+
+    def test_quiet_shows_warning(self, capsys):
+        r = Result()
+        r.warn("heads up")
+        ret = _report_text(r, quiet=True)
+        assert ret == 0
+        assert "heads up" in capsys.readouterr().out
+
+    def test_quiet_shows_error(self, capsys):
+        r = Result()
+        r.error("something broke")
+        ret = _report_text(r, quiet=True)
+        assert ret == 1
+        assert "something broke" in capsys.readouterr().out
+
 
 class TestReportJsonl:
     def test_ok_commit(self, capsys):
@@ -1522,6 +1551,19 @@ class TestReportJsonl:
             "message": "missing body",
         }
 
+    def test_quiet_suppresses_ok_commit(self, capsys):
+        r = Result()
+        ret = _report_jsonl(r, "abc1234567890", "fix: add thing", quiet=True)
+        assert ret == 0
+        assert capsys.readouterr().out == ""
+
+    def test_quiet_shows_failed_commit(self, capsys):
+        r = Result()
+        r.error("missing body", check="body")
+        ret = _report_jsonl(r, "abc1234567890", "fix: add thing", quiet=True)
+        assert ret == 1
+        assert json.loads(capsys.readouterr().out)["ok"] is False
+
     def test_null_sha(self, capsys):
         r = Result()
         ret = _report_jsonl(r, None, "fix: add thing")
@@ -1543,6 +1585,40 @@ class TestReportJsonl:
         _report_jsonl(r, "abc", "fix: add thing")
         out = capsys.readouterr().out
         assert out.count("\n") == 1
+
+
+class TestReportCommit:
+    def test_range_text_prints_sha_header(self, capsys):
+        args = Namespace(output=OutputFormat.TEXT, rev_range="a..b", quiet=False)
+        ret = _report_commit(args, Result(), "abc1234567890", "fix: add thing")
+        assert ret == 0
+        out = capsys.readouterr().out
+        assert out.startswith("abc1234 fix: add thing")
+        assert "all checks passed" in out
+
+    def test_single_commit_text_has_no_header(self, capsys):
+        args = Namespace(output=OutputFormat.TEXT, rev_range=None, quiet=False)
+        ret = _report_commit(args, Result(), None, "fix: add thing")
+        assert ret == 0
+        out = capsys.readouterr().out
+        assert "fix: add thing" not in out
+        assert "all checks passed" in out
+
+    def test_jsonl_dispatch(self, capsys):
+        args = Namespace(output=OutputFormat.JSONL, rev_range="a..b", quiet=False)
+        r = Result()
+        r.error("missing body", check="body")
+        ret = _report_commit(args, r, "abc1234567890", "fix: add thing")
+        assert ret == 1
+        data = json.loads(capsys.readouterr().out)
+        assert data["sha"] == "abc1234567890"
+        assert data["ok"] is False
+
+    def test_quiet_range_suppresses_header_for_clean_commit(self, capsys):
+        args = Namespace(output=OutputFormat.TEXT, rev_range="a..b", quiet=True)
+        ret = _report_commit(args, Result(), "abc1234567890", "fix: add thing")
+        assert ret == 0
+        assert capsys.readouterr().out == ""
 
 
 _VALID_MSG = "fix: add thing\n\nbody text\n\nSigned-off-by: A User <a@b.com>"
@@ -2452,3 +2528,141 @@ class TestOutputFile:
             assert main() == 1
         data = json.loads(out_file.read_text())
         assert data["ok"] is False
+
+
+class TestQuiet:
+    def test_range_text_shows_only_failing_commits(self, capsys):
+        messages = {"aaa1234": _VALID_MSG, "bbb5678": "bad message"}
+        with (
+            patch(
+                "sys.argv",
+                [
+                    "cg",
+                    "--range",
+                    "HEAD~2..HEAD",
+                    "--disable",
+                    "signature,body,signed-off,imperative",
+                    "--quiet",
+                ],
+            ),
+            patch(
+                "git_commit_guard._get_range_revs",
+                return_value=["aaa1234", "bbb5678"],
+            ),
+            patch(
+                "git_commit_guard._get_message",
+                side_effect=lambda rev: messages[rev],
+            ),
+        ):
+            assert main() == 1
+        out = capsys.readouterr().out
+        assert "bbb5678" in out
+        assert "aaa1234" not in out
+
+    def test_range_text_all_pass_prints_nothing(self, capsys):
+        with (
+            patch(
+                "sys.argv",
+                ["cg", "--range", "HEAD~2..HEAD", "--disable", "signature", "-q"],
+            ),
+            patch(
+                "git_commit_guard._get_range_revs",
+                return_value=["aaa1234", "bbb5678"],
+            ),
+            patch("git_commit_guard._get_message", return_value=_VALID_MSG),
+        ):
+            assert main() == 0
+        assert capsys.readouterr().out == ""
+
+    def test_single_commit_pass_prints_nothing(self, capsys, tmp_path):
+        msg_file = tmp_path / "msg"
+        msg_file.write_text(_VALID_MSG)
+        with patch(
+            "sys.argv",
+            [
+                "cg",
+                "--message-file",
+                str(msg_file),
+                "--disable",
+                "signature,imperative",
+                "--quiet",
+            ],
+        ):
+            assert main() == 0
+        assert capsys.readouterr().out == ""
+
+    def test_single_commit_failure_still_printed(self, capsys, tmp_path):
+        msg_file = tmp_path / "msg"
+        msg_file.write_text("fix: add thing")
+        with patch(
+            "sys.argv",
+            [
+                "cg",
+                "--message-file",
+                str(msg_file),
+                "--disable",
+                "signature,imperative",
+                "--quiet",
+            ],
+        ):
+            assert main() == 1
+        assert "body" in capsys.readouterr().out
+
+    def test_range_jsonl_emits_only_failing_records(self, capsys):
+        messages = {"aaa1234": _VALID_MSG, "bbb5678": "bad message"}
+        with (
+            patch(
+                "sys.argv",
+                [
+                    "cg",
+                    "--range",
+                    "HEAD~2..HEAD",
+                    "--disable",
+                    "signature,body,signed-off,imperative",
+                    "--output",
+                    "jsonl",
+                    "--quiet",
+                ],
+            ),
+            patch(
+                "git_commit_guard._get_range_revs",
+                return_value=["aaa1234", "bbb5678"],
+            ),
+            patch(
+                "git_commit_guard._get_message",
+                side_effect=lambda rev: messages[rev],
+            ),
+        ):
+            assert main() == 1
+        lines = capsys.readouterr().out.strip().splitlines()
+        assert len(lines) == 1
+        data = json.loads(lines[0])
+        assert data["sha"] == "bbb5678"
+        assert data["ok"] is False
+
+    def test_output_file_still_receives_all_records(self, capsys, tmp_path):
+        out_file = tmp_path / "results.jsonl"
+        with (
+            patch(
+                "sys.argv",
+                [
+                    "cg",
+                    "--range",
+                    "HEAD~2..HEAD",
+                    "--disable",
+                    "signature",
+                    "--quiet",
+                    "--output-file",
+                    str(out_file),
+                ],
+            ),
+            patch(
+                "git_commit_guard._get_range_revs",
+                return_value=["aaa1234", "bbb5678"],
+            ),
+            patch("git_commit_guard._get_message", return_value=_VALID_MSG),
+        ):
+            assert main() == 0
+        assert capsys.readouterr().out == ""
+        lines = out_file.read_text().strip().splitlines()
+        assert len(lines) == 2
