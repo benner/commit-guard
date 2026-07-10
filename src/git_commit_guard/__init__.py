@@ -146,6 +146,10 @@ class Result:
     def ok(self):
         return not any(lvl == Level.ERROR for _, lvl, _ in self.errors)
 
+    @property
+    def noteworthy(self):
+        return any(lvl in (Level.ERROR, Level.WARN) for _, lvl, _ in self.errors)
+
 
 def _ensure_nltk_data():
     _download_if_missing("taggers/averaged_perceptron_tagger_eng")
@@ -565,6 +569,7 @@ class Args:
     subject_pattern: re.Pattern | None
     output: OutputFormat
     output_file: Path | None
+    quiet: bool
 
 
 def _resolve_enabled(args, config, parser):
@@ -662,7 +667,7 @@ def _parse_checks(parser, value):
         parser.error(str(e))
 
 
-def _parse_args():  # noqa: PLR0915 Too many statements (59 > 50)
+def _parse_args():  # noqa: PLR0915 Too many statements (60 > 50)
     checks_list = ",".join(sorted(Check))
     parser = ArgumentParser(description="conventional commit checker")
     parser.add_argument("rev", nargs="?", default=None)
@@ -761,6 +766,13 @@ def _parse_args():  # noqa: PLR0915 Too many statements (59 > 50)
         metavar="FILE",
         help="write JSONL results to FILE (text still goes to stdout)",
     )
+    parser.add_argument(
+        "-q",
+        "--quiet",
+        action="store_true",
+        default=False,
+        help="suppress output for commits without errors or warnings",
+    )
     args = parser.parse_args()
     config = _load_config()
     enabled = _resolve_enabled(args, config, parser)
@@ -823,6 +835,7 @@ def _parse_args():  # noqa: PLR0915 Too many statements (59 > 50)
         subject_pattern=subject_pattern,
         output=OutputFormat(args.output),
         output_file=args.output_file,
+        quiet=args.quiet,
     )
 
 
@@ -838,7 +851,9 @@ def _jsonl_record(result, sha, subject):
     }
 
 
-def _report_jsonl(result, sha, subject):
+def _report_jsonl(result, sha, subject, *, quiet=False):
+    if quiet and not result.noteworthy:
+        return 0
     print(json.dumps(_jsonl_record(result, sha, subject)))
     return 0 if result.ok else 1
 
@@ -847,7 +862,9 @@ def _write_jsonl_record(result, sha, subject, file):
     file.write(json.dumps(_jsonl_record(result, sha, subject)) + "\n")
 
 
-def _report_text(result):
+def _report_text(result, *, quiet=False):
+    if quiet and not result.noteworthy:
+        return 0
     color = sys.stdout.isatty()
     for check, level, msg in result.errors:
         prefix = f"[{check}] " if check else ""
@@ -894,10 +911,10 @@ def _run_checks(args, rev, message, result):
 
 def _report_commit(args, result, sha, subject):
     if args.output == OutputFormat.JSONL:
-        return _report_jsonl(result, sha, subject)
-    if args.rev_range:
+        return _report_jsonl(result, sha, subject, quiet=args.quiet)
+    if args.rev_range and (not args.quiet or result.noteworthy):
         print(f"{sha[:7]} {subject}")
-    return _report_text(result)
+    return _report_text(result, quiet=args.quiet)
 
 
 def main():

@@ -331,6 +331,22 @@ misconfigured range specs in CI. Use `--allow-empty` to exit 0 instead:
 commit-guard --range origin/main..HEAD --allow-empty
 ```
 
+### Quiet mode
+
+Use `--quiet` (or `-q`) to suppress output for commits that have nothing to
+report — only commits with errors or warnings are printed. On a long range
+this leaves exactly the offending commits in the output; a fully compliant
+range prints nothing and exits 0:
+
+```bash
+commit-guard --range origin/main..HEAD --quiet
+```
+
+Quiet mode applies to single-commit and range mode, in both text and
+`--output jsonl` formats. Exit codes are unchanged, so it composes with CI
+gating. `--output-file` is not affected — the file always receives the
+complete record stream.
+
 ### Machine-readable output
 
 Use `--output jsonl` to emit one JSON line per commit to stdout instead of the

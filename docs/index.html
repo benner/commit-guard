@@ -551,6 +551,15 @@ require-subject-pattern = "[A-Z]+-[0-9]+"</code></pre>
           readable logs and structured results for downstream steps:
         </p>
         <pre><code class="language-bash">commit-guard --range origin/main..HEAD --output-file results.jsonl</code></pre>
+        <p>
+          Use <code>--quiet</code> (or <code>-q</code>) to suppress output for
+          commits that have nothing to report — only commits with errors or
+          warnings are printed, in both text and JSONL formats. A fully
+          compliant range prints nothing and exits 0. Exit codes are unchanged,
+          and <code>--output-file</code> always receives the complete record
+          stream:
+        </p>
+        <pre><code class="language-bash">commit-guard --range origin/main..HEAD --quiet</code></pre>
       </section>
 
       <section id="github-actions">
