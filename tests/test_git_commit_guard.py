@@ -516,6 +516,28 @@ class TestCheckImperative:
         check_imperative("adding token refresh", r)
         assert not r.ok
 
+    def test_base_verb_with_ing_suffix_passes(self):
+        r = Result()
+        check_imperative("bring back --verbose flag", r)
+        assert r.ok
+
+    def test_base_verb_with_ed_suffix_passes(self):
+        r = Result()
+        check_imperative("embed version string in binary", r)
+        assert r.ok
+
+    def test_oov_gerund_still_fails(self):
+        # wordnet has no verb entry for 'refactoring'; suffix backstop catches it
+        r = Result()
+        check_imperative("refactoring config loader", r)
+        assert not r.ok
+        assert "non-imperative suffix" in r.errors[0][2]
+
+    def test_known_gerund_reports_inflected_form(self):
+        r = Result()
+        check_imperative("adding token refresh", r)
+        assert "inflected form of 'add'" in r.errors[0][2]
+
     def test_third_person_fails(self):
         r = Result()
         check_imperative("adds token refresh", r)
