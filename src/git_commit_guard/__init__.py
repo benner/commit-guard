@@ -231,12 +231,6 @@ def check_imperative(desc, result):
     if not tokens:
         return
     first = tokens[0]
-    if _NON_IMPERATIVE_SUFFIX_RE.search(first):
-        result.error(
-            f"expected imperative verb, got '{first}' (non-imperative suffix)",
-            check=Check.IMPERATIVE,
-        )
-        return
     base = wordnet.morphy(first, wordnet.VERB)
     if base is not None and base != first:
         result.error(
@@ -244,9 +238,15 @@ def check_imperative(desc, result):
             check=Check.IMPERATIVE,
         )
         return
+    if base is None and _NON_IMPERATIVE_SUFFIX_RE.search(first):
+        result.error(
+            f"expected imperative verb, got '{first}' (non-imperative suffix)",
+            check=Check.IMPERATIVE,
+        )
+        return
     tagged = nltk.pos_tag(["to", *tokens])
     if tagged[1][1] != "VB":
-        if wordnet.morphy(first, wordnet.VERB) == first:
+        if base == first:
             return
         if "-" in first:
             hyphen_prefix, hyphen_base = first.split("-", 1)
