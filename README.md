@@ -451,6 +451,7 @@ jobs:
           no-trailing-chars: '.,!'
           allow-empty: 'true'
           include-merges: 'true'
+          quiet: 'true'
           output-file: results.jsonl
 ```
 
