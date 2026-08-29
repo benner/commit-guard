@@ -42,7 +42,7 @@ jobs:
           enable-cache: false
       - name: Set up reviewdog
         # yamllint disable-line rule:line-length
-        uses: reviewdog/action-setup@d8a7baabd7f3e8544ee4dbde3ee41d0011c3a93f  # ratchet:reviewdog/action-setup@v1
+        uses: reviewdog/action-setup@d8a7baabd7f3e8544ee4dbde3ee41d0011c3a93f  # v1.5.0
       - name: Lint Markdown files with rumdl via reviewdog
         env:
           REVIEWDOG_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
