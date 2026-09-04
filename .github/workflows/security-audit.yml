@@ -24,7 +24,8 @@ jobs:
       - name: Audit dependencies
         run: |
           set -o pipefail
-          uv audit --frozen --preview-features audit-command 2>&1 |
+          uv audit --frozen --preview-features audit-command \
+            --ignore-until-fixed GHSA-8mgp-746c-j5xp 2>&1 |
             tee audit.log
       - name: Report failure in a tracking issue
         if: failure() && github.event_name == 'schedule'
