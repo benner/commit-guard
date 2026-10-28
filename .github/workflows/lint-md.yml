@@ -18,7 +18,7 @@ jobs:
           persist-credentials: false
       - name: Lint Markdown files with reviewdog
         # yamllint disable-line rule:line-length
-        uses: reviewdog/action-markdownlint@3667398db9118d7e78f7a63d10e26ce454ba5f58  # v0.26.2
+        uses: reviewdog/action-markdownlint@f8e8c509d6e706db79bb39c1c506c968f1a66b82  # v0.32.0
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           reporter: github-pr-review
