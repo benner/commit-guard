@@ -13,12 +13,12 @@ jobs:
     steps:
       - name: Checkout code
         # yamllint disable-line rule:line-length
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           persist-credentials: false
       - name: Run ruff
         # yamllint disable-line rule:line-length
-        uses: benner/action-ruff@b36eb590165f0ea36700bb92de15235c121f24f0  # v0.1.0
+        uses: benner/action-ruff@5edf345eaf6c633cc47dc35eea9b46a79ad330e3  # v0.3.1
         with:
           fail_level: error
           reporter: github-pr-review
