@@ -16,7 +16,7 @@ classifiers = [
     "Topic :: Software Development :: Version Control :: Git",
 ]
 dependencies = [
-    "nltk>=3.9.4",
+    "nltk>=3.10.4",
 ]
 
 [project.scripts]
