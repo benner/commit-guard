@@ -115,7 +115,7 @@ dev = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "nltk", specifier = ">=3.9.4" }]
+requires-dist = [{ name = "nltk", specifier = ">=3.10.4" }]
 
 [package.metadata.requires-dev]
 dev = [
