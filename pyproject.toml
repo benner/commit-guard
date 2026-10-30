@@ -28,7 +28,7 @@ Repository = "https://github.com/benner/commit-guard"
 Issues = "https://github.com/benner/commit-guard/issues"
 
 [build-system]
-requires = ["hatchling", "hatch-vcs"]
+requires = ["hatchling>=1.32,<2", "hatch-vcs>=0.5,<1"]
 build-backend = "hatchling.build"
 
 [tool.hatch.version]
